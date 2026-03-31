@@ -1,13 +1,29 @@
-import type { SettlementSnapshot } from "./contracts";
-import { mockSettlementSnapshot } from "./mock";
+import type {
+  BuildRequest,
+  ClearTileRequest,
+  ResolveQueueItemRequest,
+  SettlementActionResponse,
+  SettlementSnapshot,
+  UpgradeRequest,
+} from "./contracts";
+import {
+  getMockSettlementSnapshot,
+  resolveMockQueueItem,
+  startMockBuild,
+  startMockClearTile,
+  startMockUpgrade,
+} from "./mockServer";
 
 const USE_MOCK_API = true;
 const SETTLEMENT_ENDPOINT = "http://localhost:54321/functions/v1/settlement";
+const BUILD_ENDPOINT = "http://localhost:54321/functions/v1/actions-build";
+const UPGRADE_ENDPOINT = "http://localhost:54321/functions/v1/actions-upgrade";
+const CLEAR_TILE_ENDPOINT = "http://localhost:54321/functions/v1/actions-clear-tile";
+const RESOLVE_QUEUE_ENDPOINT = "http://localhost:54321/functions/v1/internal-resolve-queue-item";
 
 export async function fetchSettlementSnapshot(): Promise<SettlementSnapshot> {
   if (USE_MOCK_API) {
-    await delay(150);
-    return mockSettlementSnapshot;
+    return getMockSettlementSnapshot();
   }
 
   const response = await fetch(SETTLEMENT_ENDPOINT);
@@ -19,6 +35,52 @@ export async function fetchSettlementSnapshot(): Promise<SettlementSnapshot> {
   return (await response.json()) as SettlementSnapshot;
 }
 
-function delay(ms: number): Promise<void> {
-  return new Promise((resolve) => setTimeout(resolve, ms));
+export async function startBuild(request: BuildRequest): Promise<SettlementActionResponse> {
+  if (USE_MOCK_API) {
+    return startMockBuild(request);
+  }
+
+  return postJson<BuildRequest, SettlementActionResponse>(BUILD_ENDPOINT, request);
+}
+
+export async function startUpgrade(request: UpgradeRequest): Promise<SettlementActionResponse> {
+  if (USE_MOCK_API) {
+    return startMockUpgrade(request);
+  }
+
+  return postJson<UpgradeRequest, SettlementActionResponse>(UPGRADE_ENDPOINT, request);
+}
+
+export async function startClearTile(request: ClearTileRequest): Promise<SettlementActionResponse> {
+  if (USE_MOCK_API) {
+    return startMockClearTile(request);
+  }
+
+  return postJson<ClearTileRequest, SettlementActionResponse>(CLEAR_TILE_ENDPOINT, request);
+}
+
+export async function resolveQueueItem(
+  request: ResolveQueueItemRequest,
+): Promise<SettlementActionResponse> {
+  if (USE_MOCK_API) {
+    return resolveMockQueueItem(request);
+  }
+
+  return postJson<ResolveQueueItemRequest, SettlementActionResponse>(RESOLVE_QUEUE_ENDPOINT, request);
+}
+
+async function postJson<TRequest, TResponse>(url: string, payload: TRequest): Promise<TResponse> {
+  const response = await fetch(url, {
+    method: "POST",
+    headers: {
+      "content-type": "application/json",
+    },
+    body: JSON.stringify(payload),
+  });
+
+  if (!response.ok) {
+    throw new Error(`Request failed: ${response.status}`);
+  }
+
+  return (await response.json()) as TResponse;
 }

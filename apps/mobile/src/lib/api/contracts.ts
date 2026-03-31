@@ -1,3 +1,6 @@
+export type BuildingType = "camp" | "workshop" | "hut" | "well" | "storehouse" | "watchtower";
+export type QueueActionType = "build" | "upgrade" | "clear_tile";
+
 export interface SettlementBalances {
   supplies: number;
   stone: number;
@@ -13,7 +16,7 @@ export interface SettlementTile {
 export interface SettlementBuilding {
   id: string;
   tileKey: string;
-  buildingType: string;
+  buildingType: BuildingType;
   level: number;
   state: "planned" | "building" | "complete";
   startedAt?: string;
@@ -22,7 +25,7 @@ export interface SettlementBuilding {
 
 export interface ConstructionQueueItem {
   id: string;
-  actionType: "build" | "upgrade" | "clear_tile";
+  actionType: QueueActionType;
   targetType: "building" | "tile";
   targetId: string;
   startedAt: string;
@@ -47,3 +50,39 @@ export interface SettlementSnapshot {
   activeQueueItem: ConstructionQueueItem | null;
   completedItems: CompletedItem[];
 }
+
+export interface BuildRequest {
+  requestId: string;
+  tileKey: string;
+  buildingType: Exclude<BuildingType, "camp">;
+}
+
+export interface UpgradeRequest {
+  requestId: string;
+  buildingId: string;
+}
+
+export interface ClearTileRequest {
+  requestId: string;
+  tileKey: string;
+}
+
+export interface ResolveQueueItemRequest {
+  queueItemId: string;
+}
+
+export interface SettlementActionAcceptedResponse {
+  status: "accepted";
+  message: string;
+  snapshot: SettlementSnapshot;
+}
+
+export interface SettlementActionRejectedResponse {
+  status: "rejected";
+  code: string;
+  message: string;
+}
+
+export type SettlementActionResponse =
+  | SettlementActionAcceptedResponse
+  | SettlementActionRejectedResponse;

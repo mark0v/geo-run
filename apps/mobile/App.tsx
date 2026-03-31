@@ -14,12 +14,41 @@ export default function App() {
 }
 
 function AppContent() {
-  const { snapshot, isLoading, error, source } = useSettlementSnapshot();
+  const {
+    snapshot,
+    isLoading,
+    isSubmitting,
+    error,
+    actionMessage,
+    source,
+    startBuildAction,
+    startClearTileAction,
+    startUpgradeAction,
+    resolveActiveQueueItemAction,
+  } = useSettlementSnapshot();
 
   return (
     <SafeAreaView style={styles.screen}>
       <ScrollView contentContainerStyle={styles.content}>
-        {snapshot ? <SettlementHomeScreen snapshot={snapshot} /> : null}
+        {snapshot ? (
+          <SettlementHomeScreen
+            snapshot={snapshot}
+            isSubmitting={isSubmitting}
+            actionMessage={actionMessage}
+            onBuild={(tileKey, buildingType) => {
+              void startBuildAction(tileKey, buildingType);
+            }}
+            onClearTile={(tileKey) => {
+              void startClearTileAction(tileKey);
+            }}
+            onUpgrade={(buildingId) => {
+              void startUpgradeAction(buildingId);
+            }}
+            onResolveQueueItem={() => {
+              void resolveActiveQueueItemAction();
+            }}
+          />
+        ) : null}
 
         <View style={styles.metaCard}>
           <Text style={styles.metaTitle}>Data layer</Text>
@@ -27,6 +56,8 @@ function AppContent() {
             Source: {source ?? 'none'}
             {'\n'}
             Loading: {isLoading ? 'yes' : 'no'}
+            {'\n'}
+            Submitting: {isSubmitting ? 'yes' : 'no'}
             {'\n'}
             Error: {error ?? 'none'}
           </Text>

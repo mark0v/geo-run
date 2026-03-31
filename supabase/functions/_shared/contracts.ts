@@ -60,3 +60,67 @@ export interface SettlementBalances {
   supplies: number;
   stone: number;
 }
+
+export type BuildingType = "camp" | "workshop" | "hut" | "well" | "storehouse" | "watchtower";
+export type QueueActionType = "build" | "upgrade" | "clear_tile";
+
+export interface SettlementTile {
+  id: string;
+  tileKey: string;
+  terrainType: string;
+  state: "hidden" | "blocked" | "cleared" | "occupied";
+}
+
+export interface SettlementBuilding {
+  id: string;
+  tileKey: string;
+  buildingType: BuildingType;
+  level: number;
+  state: "planned" | "building" | "complete";
+  startedAt?: string;
+  completedAt?: string;
+}
+
+export interface ConstructionQueueItem {
+  id: string;
+  actionType: QueueActionType;
+  targetType: "building" | "tile";
+  targetId: string;
+  startedAt: string;
+  completeAt: string;
+}
+
+export interface CompletedItem {
+  id: string;
+  title: string;
+  completedAt: string;
+}
+
+export interface SettlementSnapshot {
+  settlement: {
+    id: string;
+    name: string;
+    milestoneLevel: number;
+    balances: SettlementBalances;
+  };
+  tiles: SettlementTile[];
+  buildings: SettlementBuilding[];
+  activeQueueItem: ConstructionQueueItem | null;
+  completedItems: CompletedItem[];
+}
+
+export interface SettlementActionAcceptedResponse {
+  status: "accepted";
+  message: string;
+  snapshot: SettlementSnapshot;
+}
+
+export interface SettlementActionRejectedResponse {
+  status: "rejected";
+  code: string;
+  message: string;
+}
+
+export type SettlementActionResponse =
+  | SettlementActionAcceptedResponse
+  | SettlementActionRejectedResponse;

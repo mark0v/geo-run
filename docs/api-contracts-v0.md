@@ -134,22 +134,36 @@ For `build`, `upgrade`, and `clear-tile`, return:
 {
   "status": "accepted",
   "message": "Workshop construction started.",
-  "settlement": {
-    "balances": {
-      "supplies": 80,
-      "stone": 14
-    }
-  },
-  "activeQueueItem": {
-    "id": "queue-id",
-    "actionType": "build",
-    "targetType": "building",
-    "completeAt": "2026-04-01T08:00:00Z"
+  "snapshot": {
+    "settlement": {
+      "id": "settlement-id",
+      "name": "New Haven",
+      "milestoneLevel": 1,
+      "balances": {
+        "supplies": 80,
+        "stone": 14
+      }
+    },
+    "tiles": [],
+    "buildings": [],
+    "activeQueueItem": {
+      "id": "queue-id",
+      "actionType": "build",
+      "targetType": "building",
+      "completeAt": "2026-04-01T08:00:00Z"
+    },
+    "completedItems": []
   }
 }
 ```
 
 Rejected mutations should return a stable error code and human-readable message.
+
+For the MVP, returning the full settlement snapshot keeps the mobile cache simple:
+
+- one accepted mutation can immediately refresh the whole home screen
+- SQLite cache writes stay single-record and snapshot-oriented
+- we can narrow responses later if payload size becomes a real problem
 
 ## `POST /internal/resolve-queue-item`
 
