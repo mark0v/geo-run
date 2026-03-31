@@ -26,34 +26,116 @@ export function SettlementHomeScreen({
   const visibleTiles = snapshot.tiles.filter((tile) => tile.state !== "hidden");
   const activeQueueItem = snapshot.activeQueueItem;
   const workshop = snapshot.buildings.find((building) => building.buildingType === "workshop");
+  const buildingByTileKey = new Map(snapshot.buildings.map((building) => [building.tileKey, building]));
   const openBuildTile = snapshot.tiles.find(
     (tile) =>
       tile.state === "cleared" &&
       !snapshot.buildings.some((building) => building.tileKey === tile.tileKey),
   );
   const blockedTile = snapshot.tiles.find((tile) => tile.state === "blocked");
+  const settlementStage = getSettlementStage(snapshot.buildings.length, snapshot.settlement.milestoneLevel);
+  const sortedVisibleTiles = [...visibleTiles].sort(compareTiles);
+  const completedBuildings = snapshot.buildings.filter((building) => building.state === "complete").length;
 
   return (
     <View style={styles.screen}>
       <View style={styles.heroCard}>
-        <Text style={styles.eyebrow}>Geo Run</Text>
+        <View style={styles.heroSky} />
+        <View style={styles.heroGlow} />
+        <Text style={styles.eyebrow}>Geo Run frontier</Text>
         <Text style={styles.title}>{snapshot.settlement.name}</Text>
-        <Text style={styles.subtitle}>Frontier settlement builder powered by real-world activity.</Text>
+        <Text style={styles.subtitle}>
+          A quiet outpost growing from everyday movement, one evening decision at a time.
+        </Text>
+        <View style={styles.heroTagRow}>
+          <View style={styles.heroTag}>
+            <Text style={styles.heroTagLabel}>Stage</Text>
+            <Text style={styles.heroTagValue}>{settlementStage}</Text>
+          </View>
+          <View style={styles.heroTag}>
+            <Text style={styles.heroTagLabel}>Queue</Text>
+            <Text style={styles.heroTagValue}>{activeQueueItem ? "1 active" : "Open"}</Text>
+          </View>
+        </View>
       </View>
 
-      <View style={styles.balanceRow}>
-        <View style={styles.balanceCard}>
-          <Text style={styles.balanceLabel}>Supplies</Text>
-          <Text style={styles.balanceValue}>{snapshot.settlement.balances.supplies}</Text>
+      <View style={styles.progressRow}>
+        <View style={styles.progressCard}>
+          <Text style={styles.progressLabel}>Milestone</Text>
+          <Text style={styles.progressValue}>Lv.{snapshot.settlement.milestoneLevel}</Text>
         </View>
-        <View style={styles.balanceCard}>
-          <Text style={styles.balanceLabel}>Stone</Text>
-          <Text style={styles.balanceValue}>{snapshot.settlement.balances.stone}</Text>
+        <View style={styles.progressCard}>
+          <Text style={styles.progressLabel}>Visible land</Text>
+          <Text style={styles.progressValue}>{visibleTiles.length}</Text>
+        </View>
+        <View style={styles.progressCard}>
+          <Text style={styles.progressLabel}>Structures</Text>
+          <Text style={styles.progressValue}>{completedBuildings}</Text>
         </View>
       </View>
 
       <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Tonight's move</Text>
+        <Text style={styles.sectionTitle}>Daily summary</Text>
+        <Text style={styles.sectionLead}>
+          Today's movement becomes the material that shapes tomorrow's silhouette.
+        </Text>
+        <View style={styles.balanceRow}>
+          <View style={[styles.balanceCard, styles.balanceCardWarm]}>
+            <Text style={styles.balanceLabel}>Supplies</Text>
+            <Text style={styles.balanceValue}>{snapshot.settlement.balances.supplies}</Text>
+            <Text style={styles.balanceHint}>Primary build resource from steps</Text>
+          </View>
+          <View style={[styles.balanceCard, styles.balanceCardStone]}>
+            <Text style={styles.balanceLabel}>Stone</Text>
+            <Text style={styles.balanceValue}>{snapshot.settlement.balances.stone}</Text>
+            <Text style={styles.balanceHint}>Bonus depth from floors and climbs</Text>
+          </View>
+        </View>
+      </View>
+
+      <View style={styles.section}>
+        <View style={styles.sectionHeader}>
+          <Text style={styles.sectionTitle}>Frontier board</Text>
+          <Text style={styles.sectionMeta}>{visibleTiles.length} discovered tiles</Text>
+        </View>
+        <Text style={styles.sectionLead}>
+          Cleared land becomes buildable ground. Blocked edges mark the next push outward.
+        </Text>
+        <View style={styles.boardFrame}>
+          <View style={styles.tileGrid}>
+            {sortedVisibleTiles.map((tile) => {
+              const building = buildingByTileKey.get(tile.tileKey);
+              const tileStyle = getTileStyle(tile.state, tile.terrainType);
+              const tileLabel = building ? formatBuildingLabel(building.buildingType, building.level) : formatTileState(tile.state);
+
+              return (
+                <View key={tile.id} style={[styles.tileCard, tileStyle.card]}>
+                  <View style={styles.tileHeader}>
+                    <Text style={[styles.tileKey, tileStyle.key]}>{tile.tileKey}</Text>
+                    <Text style={[styles.tileTerrain, tileStyle.terrain]}>{formatTerrain(tile.terrainType)}</Text>
+                  </View>
+                  <View style={[styles.tileBadge, tileStyle.badge]}>
+                    <Text style={[styles.tileBadgeLabel, tileStyle.badgeLabel]}>{tileLabel}</Text>
+                  </View>
+                  <Text style={[styles.tileState, tileStyle.state]}>
+                    {building ? `Structure ${building.state}` : formatTileState(tile.state)}
+                  </Text>
+                </View>
+              );
+            })}
+          </View>
+        </View>
+      </View>
+
+      <View style={styles.section}>
+        <View style={styles.sectionHeader}>
+          <Text style={styles.sectionTitle}>Tonight's move</Text>
+          <Text style={styles.sectionMeta}>{isSubmitting ? "Processing" : "Ready"}</Text>
+        </View>
+        <Text style={styles.sectionLead}>
+          The session should take two or three minutes: collect the day, make one decision, leave
+          with a visible next target.
+        </Text>
         <ActionButton
           label="Sync today's activity"
           hint="Demo sync 8,400 steps and 6 floors into Supplies and Stone."
@@ -63,10 +145,11 @@ export function SettlementHomeScreen({
 
         {activeQueueItem ? (
           <>
-            <Text style={styles.paragraph}>
-              Current project: {formatQueueAction(activeQueueItem.actionType)} until{" "}
-              {formatTimestamp(activeQueueItem.completeAt)}
-            </Text>
+            <View style={styles.queueCard}>
+              <Text style={styles.queueEyebrow}>Project in motion</Text>
+              <Text style={styles.queueTitle}>{formatQueueAction(activeQueueItem.actionType)}</Text>
+              <Text style={styles.queueMeta}>Resolves at {formatTimestamp(activeQueueItem.completeAt)}</Text>
+            </View>
             <ActionButton
               label="Resolve current project"
               hint="Use the mock backend to complete the active queue item and reveal the next state."
@@ -113,38 +196,34 @@ export function SettlementHomeScreen({
       </View>
 
       <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Current outpost</Text>
+        <View style={styles.sectionHeader}>
+          <Text style={styles.sectionTitle}>Settlement ledger</Text>
+          <Text style={styles.sectionMeta}>{snapshot.buildings.length} tracked structures</Text>
+        </View>
+        <Text style={styles.sectionLead}>
+          A compact readout of what has been established and what the outpost remembers.
+        </Text>
         {snapshot.buildings.map((building) => (
           <View key={building.id} style={styles.rowCard}>
             <Text style={styles.rowTitle}>
-              {building.buildingType} Lv.{building.level}
+              {formatBuildingLabel(building.buildingType, building.level)}
             </Text>
             <Text style={styles.rowMeta}>{building.state}</Text>
           </View>
         ))}
-      </View>
-
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Visible terrain</Text>
-        <View style={styles.tileGrid}>
-          {visibleTiles.map((tile) => (
-            <View key={tile.id} style={styles.tileCard}>
-              <Text style={styles.tileKey}>{tile.tileKey}</Text>
-              <Text style={styles.tileState}>{tile.state}</Text>
-            </View>
-          ))}
+        <View style={styles.ritualPanel}>
+          <Text style={styles.ritualTitle}>Evening ritual</Text>
+          <Text style={styles.paragraph}>1. Convert movement into materials.</Text>
+          <Text style={styles.paragraph}>2. Start one build, upgrade, or tile clear.</Text>
+          <Text style={styles.paragraph}>3. Leave with one visible frontier objective.</Text>
         </View>
       </View>
 
       <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Tonight's ritual</Text>
-        <Text style={styles.paragraph}>1. Sync activity and review today's gains.</Text>
-        <Text style={styles.paragraph}>2. Start one build, upgrade, or tile clear.</Text>
-        <Text style={styles.paragraph}>3. Leave with one visible next objective.</Text>
-      </View>
-
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Recent milestones</Text>
+        <View style={styles.sectionHeader}>
+          <Text style={styles.sectionTitle}>Recent milestones</Text>
+          <Text style={styles.sectionMeta}>{snapshot.completedItems.length} recorded</Text>
+        </View>
         {snapshot.completedItems.slice(0, 3).map((item) => (
           <View key={item.id} style={styles.rowCard}>
             <Text style={styles.rowTitle}>{item.title}</Text>
@@ -181,8 +260,23 @@ function ActionButton({ label, hint, disabled, onPress }: ActionButtonProps) {
   );
 }
 
+function compareTiles(left: SettlementSnapshot["tiles"][number], right: SettlementSnapshot["tiles"][number]): number {
+  const [leftX, leftY] = left.tileKey.split(",").map(Number);
+  const [rightX, rightY] = right.tileKey.split(",").map(Number);
+
+  if (leftY === rightY) {
+    return leftX - rightX;
+  }
+
+  return leftY - rightY;
+}
+
+function formatBuildingLabel(buildingType: BuildingType, level: number): string {
+  return `${buildingType.replace("_", " ")} Lv.${level}`;
+}
+
 function formatQueueAction(actionType: string): string {
-  return actionType.replace("_", " ");
+  return actionType.replace("_", " ").replace(/\b\w/g, (character) => character.toUpperCase());
 }
 
 function formatTimestamp(value: string): string {
@@ -192,80 +286,235 @@ function formatTimestamp(value: string): string {
   });
 }
 
+function formatTileState(state: string): string {
+  return state.replace("_", " ").replace(/\b\w/g, (character) => character.toUpperCase());
+}
+
+function formatTerrain(terrainType: string): string {
+  return terrainType.replace("-", " ").replace(/\b\w/g, (character) => character.toUpperCase());
+}
+
+function getSettlementStage(buildingCount: number, milestoneLevel: number): string {
+  if (buildingCount <= 1) {
+    return "Camp";
+  }
+
+  if (milestoneLevel <= 1) {
+    return "Outpost";
+  }
+
+  return "Settlement";
+}
+
+function getTileStyle(state: string, terrainType: string) {
+  const isHill = terrainType === "hill";
+
+  if (state === "occupied") {
+    return {
+      card: styles.tileOccupied,
+      key: styles.tileOccupiedKey,
+      terrain: styles.tileOccupiedTerrain,
+      badge: styles.tileOccupiedBadge,
+      badgeLabel: styles.tileOccupiedBadgeLabel,
+      state: styles.tileOccupiedState,
+    };
+  }
+
+  if (state === "blocked") {
+    return {
+      card: isHill ? styles.tileBlockedHill : styles.tileBlocked,
+      key: styles.tileBlockedKey,
+      terrain: styles.tileBlockedTerrain,
+      badge: styles.tileBlockedBadge,
+      badgeLabel: styles.tileBlockedBadgeLabel,
+      state: styles.tileBlockedState,
+    };
+  }
+
+  return {
+    card: styles.tileCleared,
+    key: styles.tileClearedKey,
+    terrain: styles.tileClearedTerrain,
+    badge: styles.tileClearedBadge,
+    badgeLabel: styles.tileClearedBadgeLabel,
+    state: styles.tileClearedState,
+  };
+}
+
 const styles = StyleSheet.create({
   screen: {
     flex: 1,
     gap: 16,
   },
   heroCard: {
-    backgroundColor: "#fffaf2",
+    overflow: "hidden",
+    backgroundColor: "#f4e6c4",
     borderRadius: 24,
     padding: 24,
     borderWidth: 1,
-    borderColor: "#d7c9ac",
+    borderColor: "#d0ba8f",
+  },
+  heroSky: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    height: 120,
+    backgroundColor: "#e4c684",
+  },
+  heroGlow: {
+    position: "absolute",
+    top: 22,
+    right: 22,
+    width: 88,
+    height: 88,
+    borderRadius: 44,
+    backgroundColor: "#f7deb0",
   },
   eyebrow: {
     fontSize: 13,
     fontWeight: "700",
     letterSpacing: 1,
     textTransform: "uppercase",
-    color: "#8a6a37",
+    color: "#7a5328",
     marginBottom: 10,
   },
   title: {
     fontSize: 32,
     lineHeight: 38,
     fontWeight: "700",
-    color: "#2f2415",
+    color: "#2d1e10",
     marginBottom: 8,
   },
   subtitle: {
     fontSize: 16,
     lineHeight: 24,
-    color: "#5b4c36",
+    color: "#5f4428",
+    maxWidth: "90%",
+  },
+  heroTagRow: {
+    flexDirection: "row",
+    gap: 10,
+    marginTop: 18,
+  },
+  heroTag: {
+    minWidth: 110,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    backgroundColor: "rgba(255, 250, 242, 0.72)",
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: "#d7c39c",
+  },
+  heroTagLabel: {
+    fontSize: 11,
+    textTransform: "uppercase",
+    letterSpacing: 0.8,
+    color: "#89663e",
+    marginBottom: 4,
+  },
+  heroTagValue: {
+    fontSize: 18,
+    fontWeight: "700",
+    color: "#3a2917",
+  },
+  progressRow: {
+    flexDirection: "row",
+    gap: 10,
+  },
+  progressCard: {
+    flex: 1,
+    backgroundColor: "#fff8eb",
+    borderRadius: 18,
+    padding: 14,
+    borderWidth: 1,
+    borderColor: "#deceb0",
+  },
+  progressLabel: {
+    fontSize: 12,
+    textTransform: "uppercase",
+    letterSpacing: 0.8,
+    color: "#8a6f46",
+    marginBottom: 6,
+  },
+  progressValue: {
+    fontSize: 24,
+    fontWeight: "700",
+    color: "#3a2916",
   },
   balanceRow: {
     flexDirection: "row",
     gap: 12,
+    marginTop: 12,
   },
   balanceCard: {
     flex: 1,
-    backgroundColor: "#efe5d0",
-    borderRadius: 18,
-    padding: 16,
-  },
-  balanceLabel: {
-    fontSize: 13,
-    textTransform: "uppercase",
-    letterSpacing: 0.8,
-    color: "#816845",
-    marginBottom: 8,
-  },
-  balanceValue: {
-    fontSize: 28,
-    fontWeight: "700",
-    color: "#3b2d18",
-  },
-  section: {
-    backgroundColor: "#fff",
     borderRadius: 20,
     padding: 18,
     borderWidth: 1,
+  },
+  balanceCardWarm: {
+    backgroundColor: "#efe2be",
+    borderColor: "#d6bf92",
+  },
+  balanceCardStone: {
+    backgroundColor: "#e4ddcf",
+    borderColor: "#c7baa4",
+  },
+  balanceLabel: {
+    fontSize: 12,
+    textTransform: "uppercase",
+    letterSpacing: 0.8,
+    color: "#7b6747",
+    marginBottom: 8,
+  },
+  balanceValue: {
+    fontSize: 30,
+    fontWeight: "700",
+    color: "#332416",
+  },
+  balanceHint: {
+    fontSize: 13,
+    lineHeight: 18,
+    color: "#6d5a3e",
+    marginTop: 10,
+  },
+  section: {
+    backgroundColor: "#fffdf8",
+    borderRadius: 18,
+    padding: 18,
+    borderWidth: 1,
     borderColor: "#e3d8c4",
+  },
+  sectionHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "flex-end",
+    gap: 12,
   },
   sectionTitle: {
     fontSize: 18,
     fontWeight: "700",
     color: "#352917",
-    marginBottom: 12,
+  },
+  sectionMeta: {
+    fontSize: 13,
+    color: "#8a7351",
+  },
+  sectionLead: {
+    fontSize: 14,
+    lineHeight: 21,
+    color: "#6a573a",
+    marginTop: 8,
+    marginBottom: 14,
   },
   actionButton: {
-    backgroundColor: "#efe4cc",
+    backgroundColor: "#f3ead5",
     borderRadius: 18,
     padding: 16,
     marginBottom: 10,
     borderWidth: 1,
-    borderColor: "#d2bea0",
+    borderColor: "#cfbc99",
   },
   actionButtonDisabled: {
     opacity: 0.55,
@@ -285,6 +534,31 @@ const styles = StyleSheet.create({
     lineHeight: 20,
     color: "#6b5637",
   },
+  queueCard: {
+    backgroundColor: "#ecdfc2",
+    borderRadius: 18,
+    padding: 16,
+    marginBottom: 12,
+    borderWidth: 1,
+    borderColor: "#d0bb8e",
+  },
+  queueEyebrow: {
+    fontSize: 11,
+    textTransform: "uppercase",
+    letterSpacing: 1,
+    color: "#8a663a",
+    marginBottom: 6,
+  },
+  queueTitle: {
+    fontSize: 20,
+    fontWeight: "700",
+    color: "#392816",
+    marginBottom: 4,
+  },
+  queueMeta: {
+    fontSize: 14,
+    color: "#6a5435",
+  },
   actionMessage: {
     marginTop: 6,
     fontSize: 14,
@@ -299,7 +573,8 @@ const styles = StyleSheet.create({
   rowCard: {
     flexDirection: "row",
     justifyContent: "space-between",
-    paddingVertical: 10,
+    alignItems: "center",
+    paddingVertical: 12,
     borderTopWidth: StyleSheet.hairlineWidth,
     borderTopColor: "#d6c9b4",
   },
@@ -313,27 +588,129 @@ const styles = StyleSheet.create({
     color: "#8a7351",
     textTransform: "capitalize",
   },
+  boardFrame: {
+    backgroundColor: "#efe3c9",
+    borderRadius: 22,
+    padding: 12,
+    borderWidth: 1,
+    borderColor: "#d7c39d",
+  },
   tileGrid: {
     flexDirection: "row",
     flexWrap: "wrap",
     gap: 10,
   },
   tileCard: {
-    width: "47%",
-    backgroundColor: "#f6efe3",
-    borderRadius: 16,
+    width: "48%",
+    minHeight: 138,
+    borderRadius: 18,
     padding: 12,
+    borderWidth: 1,
+  },
+  tileHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "flex-start",
+    gap: 8,
   },
   tileKey: {
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: "700",
-    color: "#463724",
-    marginBottom: 4,
+  },
+  tileTerrain: {
+    fontSize: 12,
+    textAlign: "right",
+    maxWidth: "50%",
+  },
+  tileBadge: {
+    marginTop: 28,
+    alignSelf: "flex-start",
+    paddingHorizontal: 10,
+    paddingVertical: 7,
+    borderRadius: 999,
+  },
+  tileBadgeLabel: {
+    fontSize: 12,
+    fontWeight: "700",
+  },
+  tileOccupied: {
+    backgroundColor: "#d7c497",
+    borderColor: "#b4945e",
+  },
+  tileOccupiedKey: {
+    color: "#3c2b16",
+  },
+  tileOccupiedTerrain: {
+    color: "#6f5430",
+  },
+  tileOccupiedBadge: {
+    backgroundColor: "#fff3d7",
+  },
+  tileOccupiedBadgeLabel: {
+    color: "#5f431b",
+  },
+  tileOccupiedState: {
+    color: "#5d4729",
+  },
+  tileCleared: {
+    backgroundColor: "#dbe2c7",
+    borderColor: "#b7c399",
+  },
+  tileClearedKey: {
+    color: "#2d3b20",
+  },
+  tileClearedTerrain: {
+    color: "#59694a",
+  },
+  tileClearedBadge: {
+    backgroundColor: "#f4f8ea",
+  },
+  tileClearedBadgeLabel: {
+    color: "#465832",
+  },
+  tileClearedState: {
+    color: "#526245",
+  },
+  tileBlocked: {
+    backgroundColor: "#dbd0c3",
+    borderColor: "#b8a793",
+  },
+  tileBlockedHill: {
+    backgroundColor: "#d6cabd",
+    borderColor: "#aa9b87",
+  },
+  tileBlockedKey: {
+    color: "#43352a",
+  },
+  tileBlockedTerrain: {
+    color: "#716354",
+  },
+  tileBlockedBadge: {
+    backgroundColor: "#f2ede7",
+  },
+  tileBlockedBadgeLabel: {
+    color: "#5d4b39",
+  },
+  tileBlockedState: {
+    color: "#6d5f51",
   },
   tileState: {
     fontSize: 14,
-    color: "#836b46",
-    textTransform: "capitalize",
+    marginTop: 22,
+  },
+  ritualPanel: {
+    marginTop: 14,
+    padding: 14,
+    borderRadius: 18,
+    backgroundColor: "#f7f1e6",
+    borderWidth: 1,
+    borderColor: "#e0d4c0",
+  },
+  ritualTitle: {
+    fontSize: 16,
+    fontWeight: "700",
+    color: "#433220",
+    marginBottom: 8,
   },
   paragraph: {
     fontSize: 15,
