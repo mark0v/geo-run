@@ -1,5 +1,5 @@
 import React from "react";
-import { Pressable, StyleSheet, Text, View } from "react-native";
+import { Pressable, StyleSheet, Text, useWindowDimensions, View } from "react-native";
 import type { BuildingType, SettlementSnapshot } from "../../lib/api/contracts";
 
 interface SettlementHomeScreenProps {
@@ -23,6 +23,8 @@ export function SettlementHomeScreen({
   onUpgrade,
   onResolveQueueItem,
 }: SettlementHomeScreenProps) {
+  const { width } = useWindowDimensions();
+  const isWide = width >= 1100;
   const visibleTiles = snapshot.tiles.filter((tile) => tile.state !== "hidden");
   const activeQueueItem = snapshot.activeQueueItem;
   const workshop = snapshot.buildings.find((building) => building.buildingType === "workshop");
@@ -36,6 +38,12 @@ export function SettlementHomeScreen({
   const settlementStage = getSettlementStage(snapshot.buildings.length, snapshot.settlement.milestoneLevel);
   const sortedVisibleTiles = [...visibleTiles].sort(compareTiles);
   const completedBuildings = snapshot.buildings.filter((building) => building.state === "complete").length;
+  const nextGoal = getNextGoal({
+    activeQueueItem,
+    blockedTileKey: blockedTile?.tileKey,
+    hasWorkshop: Boolean(workshop),
+    openBuildTileKey: openBuildTile?.tileKey,
+  });
 
   return (
     <View style={styles.screen}>
@@ -74,162 +82,193 @@ export function SettlementHomeScreen({
         </View>
       </View>
 
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Daily summary</Text>
-        <Text style={styles.sectionLead}>
-          Today's movement becomes the material that shapes tomorrow's silhouette.
-        </Text>
-        <View style={styles.balanceRow}>
-          <View style={[styles.balanceCard, styles.balanceCardWarm]}>
-            <Text style={styles.balanceLabel}>Supplies</Text>
-            <Text style={styles.balanceValue}>{snapshot.settlement.balances.supplies}</Text>
-            <Text style={styles.balanceHint}>Primary build resource from steps</Text>
-          </View>
-          <View style={[styles.balanceCard, styles.balanceCardStone]}>
-            <Text style={styles.balanceLabel}>Stone</Text>
-            <Text style={styles.balanceValue}>{snapshot.settlement.balances.stone}</Text>
-            <Text style={styles.balanceHint}>Bonus depth from floors and climbs</Text>
-          </View>
-        </View>
+      <View style={styles.goalCard}>
+        <Text style={styles.goalEyebrow}>Next frontier goal</Text>
+        <Text style={styles.goalTitle}>{nextGoal.title}</Text>
+        <Text style={styles.goalBody}>{nextGoal.body}</Text>
       </View>
 
-      <View style={styles.section}>
-        <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>Frontier board</Text>
-          <Text style={styles.sectionMeta}>{visibleTiles.length} discovered tiles</Text>
+      <View style={[styles.topSplit, isWide ? styles.topSplitWide : null]}>
+        <View style={[styles.topPrimary, isWide ? styles.topPrimaryWide : null]}>
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Daily summary</Text>
+            <Text style={styles.sectionLead}>
+              Today's movement becomes the material that shapes tomorrow's silhouette.
+            </Text>
+            <View style={styles.balanceRow}>
+              <View style={[styles.balanceCard, styles.balanceCardWarm]}>
+                <Text style={styles.balanceLabel}>Supplies</Text>
+                <Text style={styles.balanceValue}>{snapshot.settlement.balances.supplies}</Text>
+                <Text style={styles.balanceHint}>Primary build resource from steps</Text>
+              </View>
+              <View style={[styles.balanceCard, styles.balanceCardStone]}>
+                <Text style={styles.balanceLabel}>Stone</Text>
+                <Text style={styles.balanceValue}>{snapshot.settlement.balances.stone}</Text>
+                <Text style={styles.balanceHint}>Bonus depth from floors and climbs</Text>
+              </View>
+            </View>
+          </View>
         </View>
-        <Text style={styles.sectionLead}>
-          Cleared land becomes buildable ground. Blocked edges mark the next push outward.
-        </Text>
-        <View style={styles.boardFrame}>
-          <View style={styles.tileGrid}>
-            {sortedVisibleTiles.map((tile) => {
-              const building = buildingByTileKey.get(tile.tileKey);
-              const tileStyle = getTileStyle(tile.state, tile.terrainType);
-              const tileLabel = building ? formatBuildingLabel(building.buildingType, building.level) : formatTileState(tile.state);
 
-              return (
-                <View key={tile.id} style={[styles.tileCard, tileStyle.card]}>
-                  <View style={styles.tileHeader}>
-                    <Text style={[styles.tileKey, tileStyle.key]}>{tile.tileKey}</Text>
-                    <Text style={[styles.tileTerrain, tileStyle.terrain]}>{formatTerrain(tile.terrainType)}</Text>
-                  </View>
-                  <View style={[styles.tileBadge, tileStyle.badge]}>
-                    <Text style={[styles.tileBadgeLabel, tileStyle.badgeLabel]}>{tileLabel}</Text>
-                  </View>
-                  <Text style={[styles.tileState, tileStyle.state]}>
-                    {building ? `Structure ${building.state}` : formatTileState(tile.state)}
+        <View style={[styles.topSecondary, isWide ? styles.topSecondaryWide : null]}>
+          <View style={styles.section}>
+            <View style={styles.sectionHeader}>
+              <Text style={styles.sectionTitle}>Tonight's move</Text>
+              <Text style={styles.sectionMeta}>{isSubmitting ? "Processing" : "Ready"}</Text>
+            </View>
+            <Text style={styles.sectionLead}>
+              The session should take two or three minutes: collect the day, make one decision,
+              leave with a visible next target.
+            </Text>
+            <ActionButton
+              label="Sync today's activity"
+              hint="Demo sync 8,400 steps and 6 floors into Supplies and Stone."
+              disabled={isSubmitting}
+              onPress={onSyncTodayActivity}
+            />
+
+            {activeQueueItem ? (
+              <>
+                <View style={styles.queueCard}>
+                  <Text style={styles.queueEyebrow}>Project in motion</Text>
+                  <Text style={styles.queueTitle}>{formatQueueAction(activeQueueItem.actionType)}</Text>
+                  <Text style={styles.queueMeta}>
+                    Resolves at {formatTimestamp(activeQueueItem.completeAt)}
                   </Text>
                 </View>
-              );
-            })}
+                <ActionButton
+                  label="Resolve current project"
+                  hint="Finish the active queue item and reveal the next state."
+                  disabled={isSubmitting}
+                  onPress={onResolveQueueItem}
+                />
+              </>
+            ) : (
+              <>
+                {openBuildTile ? (
+                  <ActionButton
+                    label="Build workshop"
+                    hint={`Spend 40 Supplies on tile ${openBuildTile.tileKey}.`}
+                    disabled={isSubmitting}
+                    onPress={() => onBuild(openBuildTile.tileKey, "workshop")}
+                  />
+                ) : null}
+
+                {blockedTile ? (
+                  <ActionButton
+                    label="Clear blocked tile"
+                    hint={`Spend 30 Supplies to open ${blockedTile.tileKey}.`}
+                    disabled={isSubmitting}
+                    onPress={() => onClearTile(blockedTile.tileKey)}
+                  />
+                ) : null}
+
+                {workshop?.state === "complete" ? (
+                  <ActionButton
+                    label="Upgrade workshop"
+                    hint={`Spend 60 Supplies and 4 Stone to upgrade ${workshop.id}.`}
+                    disabled={isSubmitting}
+                    onPress={() => onUpgrade(workshop.id)}
+                  />
+                ) : null}
+
+                {!openBuildTile && !blockedTile && workshop?.state !== "complete" ? (
+                  <Text style={styles.emptyState}>No settlement action is available yet.</Text>
+                ) : null}
+              </>
+            )}
+
+            {actionMessage ? <Text style={styles.actionMessage}>{actionMessage}</Text> : null}
           </View>
         </View>
       </View>
 
-      <View style={styles.section}>
-        <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>Tonight's move</Text>
-          <Text style={styles.sectionMeta}>{isSubmitting ? "Processing" : "Ready"}</Text>
-        </View>
-        <Text style={styles.sectionLead}>
-          The session should take two or three minutes: collect the day, make one decision, leave
-          with a visible next target.
-        </Text>
-        <ActionButton
-          label="Sync today's activity"
-          hint="Demo sync 8,400 steps and 6 floors into Supplies and Stone."
-          disabled={isSubmitting}
-          onPress={onSyncTodayActivity}
-        />
-
-        {activeQueueItem ? (
-          <>
-            <View style={styles.queueCard}>
-              <Text style={styles.queueEyebrow}>Project in motion</Text>
-              <Text style={styles.queueTitle}>{formatQueueAction(activeQueueItem.actionType)}</Text>
-              <Text style={styles.queueMeta}>Resolves at {formatTimestamp(activeQueueItem.completeAt)}</Text>
+      <View style={[styles.lowerSplit, isWide ? styles.lowerSplitWide : null]}>
+        <View style={[styles.mainColumn, isWide ? styles.mainColumnWide : null]}>
+          <View style={styles.section}>
+            <View style={styles.sectionHeader}>
+              <Text style={styles.sectionTitle}>Frontier board</Text>
+              <Text style={styles.sectionMeta}>{visibleTiles.length} discovered tiles</Text>
             </View>
-            <ActionButton
-              label="Resolve current project"
-              hint="Use the mock backend to complete the active queue item and reveal the next state."
-              disabled={isSubmitting}
-              onPress={onResolveQueueItem}
-            />
-          </>
-        ) : (
-          <>
-            {openBuildTile ? (
-              <ActionButton
-                label="Build workshop"
-                hint={`Spend 40 Supplies on tile ${openBuildTile.tileKey}.`}
-                disabled={isSubmitting}
-                onPress={() => onBuild(openBuildTile.tileKey, "workshop")}
-              />
-            ) : null}
-
-            {blockedTile ? (
-              <ActionButton
-                label="Clear blocked tile"
-                hint={`Spend 30 Supplies to open ${blockedTile.tileKey}.`}
-                disabled={isSubmitting}
-                onPress={() => onClearTile(blockedTile.tileKey)}
-              />
-            ) : null}
-
-            {workshop?.state === "complete" ? (
-              <ActionButton
-                label="Upgrade workshop"
-                hint={`Spend 60 Supplies and 4 Stone to upgrade ${workshop.id}.`}
-                disabled={isSubmitting}
-                onPress={() => onUpgrade(workshop.id)}
-              />
-            ) : null}
-
-            {!openBuildTile && !blockedTile && workshop?.state !== "complete" ? (
-              <Text style={styles.emptyState}>No settlement action is available yet.</Text>
-            ) : null}
-          </>
-        )}
-
-        {actionMessage ? <Text style={styles.actionMessage}>{actionMessage}</Text> : null}
-      </View>
-
-      <View style={styles.section}>
-        <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>Settlement ledger</Text>
-          <Text style={styles.sectionMeta}>{snapshot.buildings.length} tracked structures</Text>
-        </View>
-        <Text style={styles.sectionLead}>
-          A compact readout of what has been established and what the outpost remembers.
-        </Text>
-        {snapshot.buildings.map((building) => (
-          <View key={building.id} style={styles.rowCard}>
-            <Text style={styles.rowTitle}>
-              {formatBuildingLabel(building.buildingType, building.level)}
+            <Text style={styles.sectionLead}>
+              Cleared land becomes buildable ground. Blocked edges mark the next push outward.
             </Text>
-            <Text style={styles.rowMeta}>{building.state}</Text>
-          </View>
-        ))}
-        <View style={styles.ritualPanel}>
-          <Text style={styles.ritualTitle}>Evening ritual</Text>
-          <Text style={styles.paragraph}>1. Convert movement into materials.</Text>
-          <Text style={styles.paragraph}>2. Start one build, upgrade, or tile clear.</Text>
-          <Text style={styles.paragraph}>3. Leave with one visible frontier objective.</Text>
-        </View>
-      </View>
+            <View style={styles.boardFrame}>
+              <View style={styles.tileGrid}>
+                {sortedVisibleTiles.map((tile) => {
+                  const building = buildingByTileKey.get(tile.tileKey);
+                  const tileStyle = getTileStyle(tile.state, tile.terrainType);
+                  const tileLabel = building
+                    ? formatBuildingLabel(building.buildingType, building.level)
+                    : formatTileState(tile.state);
 
-      <View style={styles.section}>
-        <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>Recent milestones</Text>
-          <Text style={styles.sectionMeta}>{snapshot.completedItems.length} recorded</Text>
-        </View>
-        {snapshot.completedItems.slice(0, 3).map((item) => (
-          <View key={item.id} style={styles.rowCard}>
-            <Text style={styles.rowTitle}>{item.title}</Text>
-            <Text style={styles.rowMeta}>{formatTimestamp(item.completedAt)}</Text>
+                  return (
+                    <View key={tile.id} style={[styles.tileCard, tileStyle.card]}>
+                      <View style={styles.tileHeader}>
+                        <Text style={[styles.tileKey, tileStyle.key]}>{tile.tileKey}</Text>
+                        <Text style={[styles.tileTerrain, tileStyle.terrain]}>
+                          {formatTerrain(tile.terrainType)}
+                        </Text>
+                      </View>
+                      <View style={[styles.tileBadge, tileStyle.badge]}>
+                        <Text style={[styles.tileBadgeLabel, tileStyle.badgeLabel]}>
+                          {tileLabel}
+                        </Text>
+                      </View>
+                      <Text style={[styles.tileState, tileStyle.state]}>
+                        {building ? `Structure ${building.state}` : formatTileState(tile.state)}
+                      </Text>
+                    </View>
+                  );
+                })}
+              </View>
+            </View>
           </View>
-        ))}
+        </View>
+
+        <View style={[styles.sideColumn, isWide ? styles.sideColumnWide : null]}>
+          <View style={styles.section}>
+            <View style={styles.sectionHeader}>
+              <Text style={styles.sectionTitle}>Settlement ledger</Text>
+              <Text style={styles.sectionMeta}>{snapshot.buildings.length} tracked structures</Text>
+            </View>
+            <Text style={styles.sectionLead}>
+              A compact readout of what has been established and what the outpost remembers.
+            </Text>
+            {snapshot.buildings.map((building) => (
+              <View key={building.id} style={styles.rowCard}>
+                <Text style={styles.rowTitle}>
+                  {formatBuildingLabel(building.buildingType, building.level)}
+                </Text>
+                <Text style={styles.rowMeta}>{building.state}</Text>
+              </View>
+            ))}
+            <View style={styles.ritualPanel}>
+              <Text style={styles.ritualTitle}>Evening ritual</Text>
+              <Text style={styles.paragraph}>1. Convert movement into materials.</Text>
+              <Text style={styles.paragraph}>2. Start one build, upgrade, or tile clear.</Text>
+              <Text style={styles.paragraph}>3. Leave with one visible frontier objective.</Text>
+            </View>
+          </View>
+
+          <View style={styles.section}>
+            <View style={styles.sectionHeader}>
+              <Text style={styles.sectionTitle}>Recent milestones</Text>
+              <Text style={styles.sectionMeta}>{snapshot.completedItems.length} recorded</Text>
+            </View>
+            {snapshot.completedItems.length === 0 ? (
+              <Text style={styles.emptyState}>
+                Complete your next project to start writing the outpost history.
+              </Text>
+            ) : null}
+            {snapshot.completedItems.slice(0, 3).map((item) => (
+              <View key={item.id} style={styles.rowCard}>
+                <Text style={styles.rowTitle}>{item.title}</Text>
+                <Text style={styles.rowMeta}>{formatTimestamp(item.completedAt)}</Text>
+              </View>
+            ))}
+          </View>
+        </View>
       </View>
     </View>
   );
@@ -306,6 +345,44 @@ function getSettlementStage(buildingCount: number, milestoneLevel: number): stri
   return "Settlement";
 }
 
+function getNextGoal({
+  activeQueueItem,
+  blockedTileKey,
+  hasWorkshop,
+  openBuildTileKey,
+}: {
+  activeQueueItem: SettlementSnapshot["activeQueueItem"];
+  blockedTileKey?: string;
+  hasWorkshop: boolean;
+  openBuildTileKey?: string;
+}) {
+  if (activeQueueItem) {
+    return {
+      title: "Finish the current project",
+      body: `${formatQueueAction(activeQueueItem.actionType)} is underway. Resolve it to reveal the next state of the outpost.`,
+    };
+  }
+
+  if (!hasWorkshop && openBuildTileKey) {
+    return {
+      title: "Anchor the outpost with a workshop",
+      body: `Tile ${openBuildTileKey} is ready. A workshop is the first real signal that this place can grow beyond a camp.`,
+    };
+  }
+
+  if (blockedTileKey) {
+    return {
+      title: "Push into the blocked frontier",
+      body: `Clear tile ${blockedTileKey} to claim more ground and widen the silhouette of the settlement.`,
+    };
+  }
+
+  return {
+    title: "Build momentum for the next unlock",
+    body: "The outpost is stable for tonight. More movement tomorrow will turn into the next visible milestone.",
+  };
+}
+
 function getTileStyle(state: string, terrainType: string) {
   const isHill = terrainType === "hill";
 
@@ -345,6 +422,32 @@ const styles = StyleSheet.create({
   screen: {
     flex: 1,
     gap: 16,
+  },
+  goalCard: {
+    backgroundColor: "#fbf2de",
+    borderRadius: 20,
+    padding: 18,
+    borderWidth: 1,
+    borderColor: "#ddc79d",
+  },
+  goalEyebrow: {
+    fontSize: 11,
+    textTransform: "uppercase",
+    letterSpacing: 1,
+    color: "#8b683f",
+    marginBottom: 6,
+  },
+  goalTitle: {
+    fontSize: 20,
+    fontWeight: "700",
+    color: "#392715",
+    marginBottom: 6,
+  },
+  goalBody: {
+    fontSize: 14,
+    lineHeight: 21,
+    color: "#6a5638",
+    maxWidth: 760,
   },
   heroCard: {
     overflow: "hidden",
@@ -421,6 +524,44 @@ const styles = StyleSheet.create({
   progressRow: {
     flexDirection: "row",
     gap: 10,
+  },
+  topSplit: {
+    gap: 16,
+  },
+  topSplitWide: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+  },
+  topPrimary: {
+    gap: 16,
+  },
+  topPrimaryWide: {
+    flex: 1,
+  },
+  topSecondary: {
+    gap: 16,
+  },
+  topSecondaryWide: {
+    width: 380,
+  },
+  lowerSplit: {
+    gap: 16,
+  },
+  lowerSplitWide: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+  },
+  mainColumn: {
+    gap: 16,
+  },
+  mainColumnWide: {
+    flex: 1.6,
+  },
+  sideColumn: {
+    gap: 16,
+  },
+  sideColumnWide: {
+    flex: 1,
   },
   progressCard: {
     flex: 1,
@@ -601,7 +742,7 @@ const styles = StyleSheet.create({
     gap: 10,
   },
   tileCard: {
-    width: "48%",
+    width: "49%",
     minHeight: 138,
     borderRadius: 18,
     padding: 12,

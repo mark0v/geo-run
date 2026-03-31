@@ -24,46 +24,49 @@ export default function App() {
   return (
     <SafeAreaView style={styles.screen}>
       <ScrollView contentContainerStyle={styles.content}>
-        {snapshot ? (
-          <SettlementHomeScreen
-            snapshot={snapshot}
-            isSubmitting={isSubmitting}
-            actionMessage={actionMessage}
-            onSyncTodayActivity={() => {
-              void syncTodayActivityAction();
-            }}
-            onBuild={(tileKey, buildingType) => {
-              void startBuildAction(tileKey, buildingType);
-            }}
-            onClearTile={(tileKey) => {
-              void startClearTileAction(tileKey);
-            }}
-            onUpgrade={(buildingId) => {
-              void startUpgradeAction(buildingId);
-            }}
-            onResolveQueueItem={() => {
-              void resolveActiveQueueItemAction();
-            }}
-          />
-        ) : null}
+        <View style={styles.contentInner}>
+          {snapshot ? (
+            <SettlementHomeScreen
+              snapshot={snapshot}
+              isSubmitting={isSubmitting}
+              actionMessage={actionMessage}
+              onSyncTodayActivity={() => {
+                void syncTodayActivityAction();
+              }}
+              onBuild={(tileKey, buildingType) => {
+                void startBuildAction(tileKey, buildingType);
+              }}
+              onClearTile={(tileKey) => {
+                void startClearTileAction(tileKey);
+              }}
+              onUpgrade={(buildingId) => {
+                void startUpgradeAction(buildingId);
+              }}
+              onResolveQueueItem={() => {
+                void resolveActiveQueueItemAction();
+              }}
+            />
+          ) : (
+            <View style={styles.stateCard}>
+              <Text style={styles.stateTitle}>Preparing the frontier</Text>
+              <Text style={styles.stateBody}>
+                {isLoading ? "Loading settlement snapshot..." : "Waiting for settlement data."}
+              </Text>
+            </View>
+          )}
 
-        <View style={styles.metaCard}>
-          <Text style={styles.metaTitle}>Data layer</Text>
-          <Text style={styles.metaBody}>
-            Mode: {runtime.mode}
-            {"\n"}
-            Functions URL: {runtime.functionsBaseUrl}
-            {"\n"}
-            Source: {source ?? "none"}
-            {"\n"}
-            Loading: {isLoading ? "yes" : "no"}
-            {"\n"}
-            Submitting: {isSubmitting ? "yes" : "no"}
-            {"\n"}
-            Demo user: {runtime.demoAuthUserId}
-            {"\n"}
-            Error: {error ?? "none"}
-          </Text>
+          <View style={styles.runtimeBar}>
+            <Text style={styles.runtimeBadge}>{runtime.mode === "live" ? "Live backend" : "Mock mode"}</Text>
+            <Text style={styles.runtimeText}>Source: {source ?? "none"}</Text>
+            <Text style={styles.runtimeText}>{isSubmitting ? "Submitting action..." : "Idle"}</Text>
+          </View>
+
+          {error ? (
+            <View style={styles.errorCard}>
+              <Text style={styles.errorTitle}>Runtime error</Text>
+              <Text style={styles.errorBody}>{error}</Text>
+            </View>
+          ) : null}
         </View>
       </ScrollView>
       <StatusBar style="auto" />
@@ -79,23 +82,70 @@ const styles = StyleSheet.create({
   content: {
     padding: 20,
   },
-  metaCard: {
-    marginTop: 16,
+  contentInner: {
+    width: "100%",
+    maxWidth: 1280,
+    alignSelf: "center",
+    gap: 16,
+  },
+  stateCard: {
     backgroundColor: "#fffaf2",
-    borderRadius: 20,
-    padding: 18,
+    borderRadius: 24,
+    padding: 24,
     borderWidth: 1,
     borderColor: "#d7c9ac",
   },
-  metaTitle: {
-    fontSize: 18,
+  stateTitle: {
+    fontSize: 22,
     fontWeight: "700",
     color: "#352917",
     marginBottom: 8,
   },
-  metaBody: {
+  stateBody: {
+    fontSize: 15,
+    lineHeight: 22,
+    color: "#5b4c36",
+  },
+  runtimeBar: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 10,
+    alignItems: "center",
+    paddingHorizontal: 6,
+  },
+  runtimeBadge: {
+    backgroundColor: "#efe3c7",
+    color: "#4f3d26",
+    borderRadius: 999,
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+    overflow: "hidden",
+    fontSize: 12,
+    fontWeight: "700",
+    textTransform: "uppercase",
+    letterSpacing: 0.8,
+  },
+  runtimeText: {
+    fontSize: 13,
+    color: "#6c5a40",
+  },
+  errorCard: {
+    marginTop: 16,
+    backgroundColor: "#fff2eb",
+    borderRadius: 20,
+    padding: 18,
+    borderWidth: 1,
+    borderColor: "#dfb5a3",
+  },
+  errorTitle: {
+    fontSize: 16,
+    fontWeight: "700",
+    color: "#6b2e18",
+    marginBottom: 8,
+  },
+  errorBody: {
     fontSize: 14,
     lineHeight: 20,
-    color: "#5b4c36",
+    color: "#6a4a38",
   },
 });
