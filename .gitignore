@@ -1,0 +1,7 @@
+.agents/skills/gstack/.git/
+.agents/skills/gstack/node_modules/
+.agents/skills/gstack/.agents/
+.agents/skills/gstack/.factory/
+.agents/skills/gstack/browse/dist/
+.agents/skills/gstack/design/dist/
+.agents/skills/gstack/bin/gstack-global-discover.exe
