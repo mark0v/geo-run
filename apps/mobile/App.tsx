@@ -4,6 +4,7 @@ import { SQLiteProvider } from 'expo-sqlite';
 import { SafeAreaView, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SettlementHomeScreen } from './src/features/settlement/SettlementHomeScreen';
 import { useSettlementSnapshot } from './src/features/settlement/useSettlementSnapshot';
+import { getApiRuntimeInfo } from './src/lib/config/runtime';
 
 export default function App() {
   return (
@@ -14,6 +15,7 @@ export default function App() {
 }
 
 function AppContent() {
+  const runtime = getApiRuntimeInfo();
   const {
     snapshot,
     isLoading,
@@ -57,11 +59,17 @@ function AppContent() {
         <View style={styles.metaCard}>
           <Text style={styles.metaTitle}>Data layer</Text>
           <Text style={styles.metaBody}>
+            Mode: {runtime.mode}
+            {'\n'}
+            Functions URL: {runtime.functionsBaseUrl}
+            {'\n'}
             Source: {source ?? 'none'}
             {'\n'}
             Loading: {isLoading ? 'yes' : 'no'}
             {'\n'}
             Submitting: {isSubmitting ? 'yes' : 'no'}
+            {'\n'}
+            Demo user: {runtime.demoAuthUserId}
             {'\n'}
             Error: {error ?? 'none'}
           </Text>

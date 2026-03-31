@@ -8,6 +8,7 @@ import type {
   SettlementSnapshot,
   UpgradeRequest,
 } from "./contracts";
+import { apiRuntimeConfig } from "../config/runtime";
 import {
   getMockSettlementSnapshot,
   resolveMockQueueItem,
@@ -17,17 +18,15 @@ import {
   syncMockActivity,
 } from "./mockServer";
 
-const USE_MOCK_API = true;
-const DEMO_AUTH_USER_ID = "00000000-0000-0000-0000-000000000001";
-const ACTIVITY_SYNC_ENDPOINT = "http://localhost:54321/functions/v1/activity-sync";
-const SETTLEMENT_ENDPOINT = "http://localhost:54321/functions/v1/settlement";
-const BUILD_ENDPOINT = "http://localhost:54321/functions/v1/actions-build";
-const UPGRADE_ENDPOINT = "http://localhost:54321/functions/v1/actions-upgrade";
-const CLEAR_TILE_ENDPOINT = "http://localhost:54321/functions/v1/actions-clear-tile";
-const RESOLVE_QUEUE_ENDPOINT = "http://localhost:54321/functions/v1/internal-resolve-queue-item";
+const ACTIVITY_SYNC_ENDPOINT = `${apiRuntimeConfig.functionsBaseUrl}/activity-sync`;
+const SETTLEMENT_ENDPOINT = `${apiRuntimeConfig.functionsBaseUrl}/settlement`;
+const BUILD_ENDPOINT = `${apiRuntimeConfig.functionsBaseUrl}/actions-build`;
+const UPGRADE_ENDPOINT = `${apiRuntimeConfig.functionsBaseUrl}/actions-upgrade`;
+const CLEAR_TILE_ENDPOINT = `${apiRuntimeConfig.functionsBaseUrl}/actions-clear-tile`;
+const RESOLVE_QUEUE_ENDPOINT = `${apiRuntimeConfig.functionsBaseUrl}/internal-resolve-queue-item`;
 
 export async function fetchSettlementSnapshot(): Promise<SettlementSnapshot> {
-  if (USE_MOCK_API) {
+  if (apiRuntimeConfig.useMockApi) {
     return getMockSettlementSnapshot();
   }
 
@@ -43,7 +42,7 @@ export async function fetchSettlementSnapshot(): Promise<SettlementSnapshot> {
 }
 
 export async function syncActivity(request: ActivitySyncRequest): Promise<ActivitySyncResponse> {
-  if (USE_MOCK_API) {
+  if (apiRuntimeConfig.useMockApi) {
     return syncMockActivity(request);
   }
 
@@ -51,7 +50,7 @@ export async function syncActivity(request: ActivitySyncRequest): Promise<Activi
 }
 
 export async function startBuild(request: BuildRequest): Promise<SettlementActionResponse> {
-  if (USE_MOCK_API) {
+  if (apiRuntimeConfig.useMockApi) {
     return startMockBuild(request);
   }
 
@@ -59,7 +58,7 @@ export async function startBuild(request: BuildRequest): Promise<SettlementActio
 }
 
 export async function startUpgrade(request: UpgradeRequest): Promise<SettlementActionResponse> {
-  if (USE_MOCK_API) {
+  if (apiRuntimeConfig.useMockApi) {
     return startMockUpgrade(request);
   }
 
@@ -67,7 +66,7 @@ export async function startUpgrade(request: UpgradeRequest): Promise<SettlementA
 }
 
 export async function startClearTile(request: ClearTileRequest): Promise<SettlementActionResponse> {
-  if (USE_MOCK_API) {
+  if (apiRuntimeConfig.useMockApi) {
     return startMockClearTile(request);
   }
 
@@ -77,7 +76,7 @@ export async function startClearTile(request: ClearTileRequest): Promise<Settlem
 export async function resolveQueueItem(
   request: ResolveQueueItemRequest,
 ): Promise<SettlementActionResponse> {
-  if (USE_MOCK_API) {
+  if (apiRuntimeConfig.useMockApi) {
     return resolveMockQueueItem(request);
   }
 
@@ -102,7 +101,15 @@ async function postJson<TRequest, TResponse>(url: string, payload: TRequest): Pr
 }
 
 function authHeaders(): Record<string, string> {
+  if (apiRuntimeConfig.useMockApi) {
+    return {
+      "x-player-auth-user-id": apiRuntimeConfig.demoAuthUserId,
+    };
+  }
+
   return {
-    "x-player-auth-user-id": DEMO_AUTH_USER_ID,
+    Authorization: `Bearer ${apiRuntimeConfig.supabaseAnonKey}`,
+    apikey: apiRuntimeConfig.supabaseAnonKey,
+    "x-player-auth-user-id": apiRuntimeConfig.demoAuthUserId,
   };
 }

@@ -31,6 +31,8 @@ Use the root scripts:
 - `npm run supabase:start`
 - `npm run supabase:status`
 - `npm run supabase:stop`
+- `npm run mobile:start:mock`
+- `npm run mobile:start:live`
 
 Notes:
 
@@ -38,5 +40,7 @@ Notes:
   avoid vector-container conflicts during repeated restarts;
 - the local Edge Functions prototype supports `x-player-auth-user-id` so a
   deterministic demo player can be bootstrapped without full auth wiring;
+- the Expo app now switches between mock and live edge-function mode via
+  `EXPO_PUBLIC_USE_MOCK_API` and related `EXPO_PUBLIC_*` runtime settings;
 - mutation persistence is functionally working, but still not wrapped in SQL RPC
   transactions yet.
