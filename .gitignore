@@ -5,6 +5,7 @@
 .agents/skills/gstack/browse/dist/
 .agents/skills/gstack/design/dist/
 .agents/skills/gstack/bin/gstack-global-discover.exe
+node_modules/
 apps/mobile/node_modules/
 apps/mobile/.expo/
 apps/mobile/dist/
