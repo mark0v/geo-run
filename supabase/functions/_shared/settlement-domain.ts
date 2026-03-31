@@ -286,6 +286,7 @@ export function planUpgrade(
             ...candidate,
             state: "building",
             startedAt,
+            completedAt: undefined,
           }
         : candidate,
     ),
@@ -455,10 +456,13 @@ function addMinutes(date: Date, minutes: number): Date {
   return new Date(date.getTime() + minutes * 60_000);
 }
 
-function makeId(prefix: string): string {
+function makeId(_prefix: string): string {
   if (typeof crypto !== "undefined" && "randomUUID" in crypto) {
-    return `${prefix}-${crypto.randomUUID()}`;
+    return crypto.randomUUID();
   }
 
-  return `${prefix}-${Date.now()}`;
+  const suffix = Math.floor(Math.random() * 0xffffffff)
+    .toString(16)
+    .padStart(8, "0");
+  return `00000000-0000-4000-8000-${suffix}${suffix.slice(0, 4)}`;
 }

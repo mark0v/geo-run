@@ -230,7 +230,9 @@ export async function startMockUpgrade(
       balances: deductCost(currentSnapshot, definition.upgradeCost),
     },
     buildings: currentSnapshot.buildings.map((candidate) =>
-      candidate.id === request.buildingId ? { ...candidate, state: "building", startedAt } : candidate,
+      candidate.id === request.buildingId
+        ? { ...candidate, state: "building", startedAt, completedAt: undefined }
+        : candidate,
     ),
     activeQueueItem: {
       id: makeId("queue"),
@@ -405,8 +407,15 @@ function addMinutes(date: Date, minutes: number): Date {
   return new Date(date.getTime() + minutes * 60_000);
 }
 
-function makeId(prefix: string): string {
-  return `${prefix}-${Date.now()}-${Math.floor(Math.random() * 1_000_000)}`;
+function makeId(_prefix: string): string {
+  if (typeof crypto !== "undefined" && "randomUUID" in crypto) {
+    return crypto.randomUUID();
+  }
+
+  const suffix = Math.floor(Math.random() * 0xffffffff)
+    .toString(16)
+    .padStart(8, "0");
+  return `00000000-0000-4000-8000-${suffix}${suffix.slice(0, 4)}`;
 }
 
 function labelForBuilding(buildingType: Exclude<BuildingType, "camp">): string {

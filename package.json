@@ -8,6 +8,12 @@
     "mobile:ios": "npm --prefix apps/mobile run ios",
     "mobile:web": "npm --prefix apps/mobile run web",
     "mobile:typecheck": "node apps/mobile/node_modules/typescript/bin/tsc -p apps/mobile/tsconfig.json --noEmit",
-    "domain:test": "bun test tests"
+    "domain:test": "bun test tests",
+    "supabase:start": "supabase start",
+    "supabase:stop": "supabase stop --project-id geo-run",
+    "supabase:status": "supabase status -o pretty"
+  },
+  "devDependencies": {
+    "supabase": "^2.84.5"
   }
 }

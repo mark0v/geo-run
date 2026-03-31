@@ -49,6 +49,24 @@ describe("settlement domain", () => {
     expect(second.error.code).toBe("ACTIVE_QUEUE_EXISTS");
   });
 
+  test("planBuild generates UUID identifiers for persisted records", () => {
+    const result = planBuild(createStarterSettlementSnapshot(), {
+      requestId: "build-uuid",
+      tileKey: "1,0",
+      buildingType: "workshop",
+    });
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+
+    const workshop = result.value.buildings.find((building) => building.buildingType === "workshop");
+    const uuidPattern =
+      /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
+    expect(workshop?.id).toMatch(uuidPattern);
+    expect(result.value.activeQueueItem?.id).toMatch(uuidPattern);
+  });
+
   test("resolveQueueItem completes a building", () => {
     const planned = planBuild(createStarterSettlementSnapshot(), {
       requestId: "build-1",
@@ -94,5 +112,10 @@ describe("settlement domain", () => {
       buildingId: workshop!.id,
     });
     expect(upgraded.ok).toBe(true);
+    if (!upgraded.ok) return;
+
+    const upgradingWorkshop = upgraded.value.buildings.find((building) => building.id === workshop!.id);
+    expect(upgradingWorkshop?.state).toBe("building");
+    expect(upgradingWorkshop?.completedAt).toBeUndefined();
   });
 });
