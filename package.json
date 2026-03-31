@@ -11,6 +11,6 @@
     "mobile:ios": "npm --prefix apps/mobile run ios",
     "mobile:web": "npm --prefix apps/mobile run web",
     "mobile:typecheck": "npm --prefix apps/mobile exec tsc --noEmit",
-    "domain:test": "bun test tests/activity-rules.test.ts"
+    "domain:test": "bun test tests"
   }
 }
