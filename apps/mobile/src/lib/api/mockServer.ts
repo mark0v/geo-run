@@ -1,4 +1,6 @@
 import type {
+  ActivitySyncRequest,
+  ActivitySyncResponse,
   BuildRequest,
   BuildingType,
   ClearTileRequest,
@@ -57,6 +59,7 @@ const CLEAR_TILE_COST: Cost = {
 };
 
 let currentSnapshot = cloneSnapshot(mockSettlementSnapshot);
+let syncedActivityKeys = new Set<string>();
 
 export async function getMockSettlementSnapshot(): Promise<SettlementSnapshot> {
   await delay(150);
@@ -65,6 +68,61 @@ export async function getMockSettlementSnapshot(): Promise<SettlementSnapshot> {
 
 export function resetMockSettlementState(): void {
   currentSnapshot = cloneSnapshot(mockSettlementSnapshot);
+  syncedActivityKeys = new Set<string>();
+}
+
+export async function syncMockActivity(request: ActivitySyncRequest): Promise<ActivitySyncResponse> {
+  await delay(150);
+
+  let acceptedWindows = 0;
+  let duplicateWindows = 0;
+  let grantedSupplies = 0;
+  let grantedStone = 0;
+
+  for (const window of request.windows) {
+    if (syncedActivityKeys.has(window.dedupeKey)) {
+      duplicateWindows += 1;
+      continue;
+    }
+
+    syncedActivityKeys.add(window.dedupeKey);
+    acceptedWindows += 1;
+    grantedSupplies += Math.max(0, Math.floor(window.steps * 0.01));
+    grantedStone += Math.max(0, Math.floor(window.floors ?? 0));
+  }
+
+  currentSnapshot = {
+    ...currentSnapshot,
+    settlement: {
+      ...currentSnapshot.settlement,
+      balances: {
+        supplies: currentSnapshot.settlement.balances.supplies + grantedSupplies,
+        stone: currentSnapshot.settlement.balances.stone + grantedStone,
+      },
+    },
+    completedItems:
+      acceptedWindows > 0
+        ? [
+            {
+              id: makeId("completed"),
+              title: `Activity synced +${grantedSupplies} Supplies`,
+              completedAt: new Date().toISOString(),
+            },
+            ...currentSnapshot.completedItems,
+          ]
+        : currentSnapshot.completedItems,
+  };
+
+  return {
+    acceptedWindows,
+    duplicateWindows,
+    grants: {
+      supplies: grantedSupplies,
+      stone: grantedStone,
+    },
+    balances: cloneSnapshot(currentSnapshot).settlement.balances,
+    snapshot: cloneSnapshot(currentSnapshot),
+  };
 }
 
 export async function startMockBuild(

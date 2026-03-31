@@ -6,6 +6,7 @@ interface SettlementHomeScreenProps {
   snapshot: SettlementSnapshot;
   isSubmitting: boolean;
   actionMessage: string | null;
+  onSyncTodayActivity: () => void;
   onBuild: (tileKey: string, buildingType: Exclude<BuildingType, "camp">) => void;
   onClearTile: (tileKey: string) => void;
   onUpgrade: (buildingId: string) => void;
@@ -16,6 +17,7 @@ export function SettlementHomeScreen({
   snapshot,
   isSubmitting,
   actionMessage,
+  onSyncTodayActivity,
   onBuild,
   onClearTile,
   onUpgrade,
@@ -52,6 +54,13 @@ export function SettlementHomeScreen({
 
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>Tonight's move</Text>
+        <ActionButton
+          label="Sync today's activity"
+          hint="Demo sync 8,400 steps and 6 floors into Supplies and Stone."
+          disabled={isSubmitting}
+          onPress={onSyncTodayActivity}
+        />
+
         {activeQueueItem ? (
           <>
             <Text style={styles.paragraph}>

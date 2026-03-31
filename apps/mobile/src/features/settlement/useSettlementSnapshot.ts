@@ -6,6 +6,7 @@ import {
   startBuild,
   startClearTile,
   startUpgrade,
+  syncActivity,
 } from "../../lib/api/client";
 import type {
   BuildingType,
@@ -29,11 +30,21 @@ interface SettlementSnapshotState {
   startClearTileAction: (tileKey: string) => Promise<void>;
   startUpgradeAction: (buildingId: string) => Promise<void>;
   resolveActiveQueueItemAction: () => Promise<void>;
+  syncTodayActivityAction: () => Promise<void>;
 }
 
 export function useSettlementSnapshot(): SettlementSnapshotState {
   const db = useSQLiteContext();
-  const [state, setState] = useState<Omit<SettlementSnapshotState, "startBuildAction" | "startClearTileAction" | "startUpgradeAction" | "resolveActiveQueueItemAction">>({
+  const [state, setState] = useState<
+    Omit<
+      SettlementSnapshotState,
+      | "startBuildAction"
+      | "startClearTileAction"
+      | "startUpgradeAction"
+      | "resolveActiveQueueItemAction"
+      | "syncTodayActivityAction"
+    >
+  >({
     snapshot: null,
     isLoading: true,
     isSubmitting: false,
@@ -204,12 +215,69 @@ export function useSettlementSnapshot(): SettlementSnapshotState {
     );
   }
 
+  async function syncTodayActivityAction(): Promise<void> {
+    startTransition(() => {
+      setState((previous) => ({
+        ...previous,
+        isSubmitting: true,
+        error: null,
+        actionMessage: null,
+      }));
+    });
+
+    try {
+      const now = new Date();
+      const dayKey = now.toISOString().slice(0, 10);
+      const response = await syncActivity({
+        windows: [
+          {
+            windowStart: `${dayKey}T00:00:00Z`,
+            windowEnd: `${dayKey}T23:59:59Z`,
+            steps: 8400,
+            floors: 6,
+            sourcePlatform: "ios",
+            sourceDeviceId: "mock-device",
+            dedupeKey: `mock:${dayKey}:8400:6`,
+          },
+        ],
+        clientCheckpoint: now.toISOString(),
+      });
+
+      await writeCachedSettlementSnapshot(db, response.snapshot);
+
+      startTransition(() => {
+        setState((previous) => ({
+          ...previous,
+          snapshot: response.snapshot,
+          isSubmitting: false,
+          error: null,
+          actionMessage:
+            response.acceptedWindows > 0
+              ? `Synced today: +${response.grants.supplies} Supplies, +${response.grants.stone} Stone.`
+              : "Today's activity was already synced.",
+          source: "network",
+        }));
+      });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Unknown activity sync error";
+
+      startTransition(() => {
+        setState((previous) => ({
+          ...previous,
+          isSubmitting: false,
+          error: message,
+        }));
+      });
+    }
+  }
+
   return {
     ...state,
     startBuildAction,
     startClearTileAction,
     startUpgradeAction,
     resolveActiveQueueItemAction,
+    syncTodayActivityAction,
   };
 }
 

@@ -8,6 +8,7 @@ import {
   sumGrants,
   validateWindow,
 } from "../_shared/activity-rules.ts";
+import { createStarterSettlementSnapshot } from "../_shared/settlement-domain.ts";
 import { json, readJson } from "../_shared/http.ts";
 
 Deno.serve(async (request) => {
@@ -32,12 +33,26 @@ Deno.serve(async (request) => {
   const { accepted, duplicates } = dedupeWindows(body.windows);
   const grants = accepted.map(grantForWindow);
   const balances = sumGrants(grants);
+  const starterSnapshot = createStarterSettlementSnapshot();
 
   const response: ActivitySyncResponse = {
     acceptedWindows: accepted.length,
     duplicateWindows: duplicates.length,
     grants: balances,
-    balances,
+    balances: {
+      supplies: starterSnapshot.settlement.balances.supplies + balances.supplies,
+      stone: starterSnapshot.settlement.balances.stone + balances.stone,
+    },
+    snapshot: {
+      ...starterSnapshot,
+      settlement: {
+        ...starterSnapshot.settlement,
+        balances: {
+          supplies: starterSnapshot.settlement.balances.supplies + balances.supplies,
+          stone: starterSnapshot.settlement.balances.stone + balances.stone,
+        },
+      },
+    },
   };
 
   return json(200, {

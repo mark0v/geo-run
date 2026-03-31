@@ -21,6 +21,7 @@ function AppContent() {
     error,
     actionMessage,
     source,
+    syncTodayActivityAction,
     startBuildAction,
     startClearTileAction,
     startUpgradeAction,
@@ -35,6 +36,9 @@ function AppContent() {
             snapshot={snapshot}
             isSubmitting={isSubmitting}
             actionMessage={actionMessage}
+            onSyncTodayActivity={() => {
+              void syncTodayActivityAction();
+            }}
             onBuild={(tileKey, buildingType) => {
               void startBuildAction(tileKey, buildingType);
             }}

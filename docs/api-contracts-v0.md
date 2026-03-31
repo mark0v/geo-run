@@ -50,6 +50,21 @@ Response:
   "balances": {
     "supplies": 120,
     "stone": 14
+  },
+  "snapshot": {
+    "settlement": {
+      "id": "settlement-id",
+      "name": "New Haven",
+      "milestoneLevel": 1,
+      "balances": {
+        "supplies": 120,
+        "stone": 14
+      }
+    },
+    "tiles": [],
+    "buildings": [],
+    "activeQueueItem": null,
+    "completedItems": []
   }
 }
 ```

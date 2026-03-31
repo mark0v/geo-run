@@ -5,6 +5,7 @@ import {
   resolveMockQueueItem,
   startMockBuild,
   startMockUpgrade,
+  syncMockActivity,
 } from "../apps/mobile/src/lib/api/mockServer";
 
 describe("mock settlement api", () => {
@@ -64,5 +65,45 @@ describe("mock settlement api", () => {
 
     expect(upgrade.snapshot.activeQueueItem?.actionType).toBe("upgrade");
     expect(upgrade.snapshot.settlement.balances.stone).toBe(2);
+  });
+
+  test("sync activity grants balances once per dedupe key", async () => {
+    const first = await syncMockActivity({
+      windows: [
+        {
+          windowStart: "2026-03-31T00:00:00Z",
+          windowEnd: "2026-03-31T23:59:59Z",
+          steps: 8400,
+          floors: 6,
+          sourcePlatform: "ios",
+          sourceDeviceId: "device-1",
+          dedupeKey: "mock:2026-03-31:8400:6",
+        },
+      ],
+      clientCheckpoint: "2026-03-31T23:59:59Z",
+    });
+
+    expect(first.acceptedWindows).toBe(1);
+    expect(first.grants.supplies).toBe(84);
+    expect(first.balances.supplies).toBe(204);
+
+    const second = await syncMockActivity({
+      windows: [
+        {
+          windowStart: "2026-03-31T00:00:00Z",
+          windowEnd: "2026-03-31T23:59:59Z",
+          steps: 8400,
+          floors: 6,
+          sourcePlatform: "ios",
+          sourceDeviceId: "device-1",
+          dedupeKey: "mock:2026-03-31:8400:6",
+        },
+      ],
+      clientCheckpoint: "2026-03-31T23:59:59Z",
+    });
+
+    expect(second.acceptedWindows).toBe(0);
+    expect(second.duplicateWindows).toBe(1);
+    expect(second.balances.supplies).toBe(204);
   });
 });

@@ -1,4 +1,6 @@
 import type {
+  ActivitySyncRequest,
+  ActivitySyncResponse,
   BuildRequest,
   ClearTileRequest,
   ResolveQueueItemRequest,
@@ -12,9 +14,11 @@ import {
   startMockBuild,
   startMockClearTile,
   startMockUpgrade,
+  syncMockActivity,
 } from "./mockServer";
 
 const USE_MOCK_API = true;
+const ACTIVITY_SYNC_ENDPOINT = "http://localhost:54321/functions/v1/activity-sync";
 const SETTLEMENT_ENDPOINT = "http://localhost:54321/functions/v1/settlement";
 const BUILD_ENDPOINT = "http://localhost:54321/functions/v1/actions-build";
 const UPGRADE_ENDPOINT = "http://localhost:54321/functions/v1/actions-upgrade";
@@ -33,6 +37,14 @@ export async function fetchSettlementSnapshot(): Promise<SettlementSnapshot> {
   }
 
   return (await response.json()) as SettlementSnapshot;
+}
+
+export async function syncActivity(request: ActivitySyncRequest): Promise<ActivitySyncResponse> {
+  if (USE_MOCK_API) {
+    return syncMockActivity(request);
+  }
+
+  return postJson<ActivitySyncRequest, ActivitySyncResponse>(ACTIVITY_SYNC_ENDPOINT, request);
 }
 
 export async function startBuild(request: BuildRequest): Promise<SettlementActionResponse> {

@@ -34,6 +34,7 @@ export interface ActivitySyncResponse {
     supplies: number;
     stone: number;
   };
+  snapshot: SettlementSnapshot;
 }
 
 export interface BuildRequest {

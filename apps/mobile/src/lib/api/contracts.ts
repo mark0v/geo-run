@@ -1,5 +1,6 @@
 export type BuildingType = "camp" | "workshop" | "hut" | "well" | "storehouse" | "watchtower";
 export type QueueActionType = "build" | "upgrade" | "clear_tile";
+export type SourcePlatform = "ios" | "android";
 
 export interface SettlementBalances {
   supplies: number;
@@ -49,6 +50,29 @@ export interface SettlementSnapshot {
   buildings: SettlementBuilding[];
   activeQueueItem: ConstructionQueueItem | null;
   completedItems: CompletedItem[];
+}
+
+export interface ActivitySyncWindowInput {
+  windowStart: string;
+  windowEnd: string;
+  steps: number;
+  floors?: number;
+  sourcePlatform: SourcePlatform;
+  sourceDeviceId?: string;
+  dedupeKey: string;
+}
+
+export interface ActivitySyncRequest {
+  windows: ActivitySyncWindowInput[];
+  clientCheckpoint?: string;
+}
+
+export interface ActivitySyncResponse {
+  acceptedWindows: number;
+  duplicateWindows: number;
+  grants: SettlementBalances;
+  balances: SettlementBalances;
+  snapshot: SettlementSnapshot;
 }
 
 export interface BuildRequest {
