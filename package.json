@@ -1,0 +1,15 @@
+{
+  "name": "geo-run",
+  "private": true,
+  "version": "0.1.0",
+  "workspaces": [
+    "apps/mobile"
+  ],
+  "scripts": {
+    "mobile:start": "npm --prefix apps/mobile run start",
+    "mobile:android": "npm --prefix apps/mobile run android",
+    "mobile:ios": "npm --prefix apps/mobile run ios",
+    "mobile:web": "npm --prefix apps/mobile run web",
+    "mobile:typecheck": "npm --prefix apps/mobile exec tsc --noEmit"
+  }
+}
