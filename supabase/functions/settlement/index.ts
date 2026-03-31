@@ -1,10 +1,21 @@
-import { createStarterSettlementSnapshot } from "../_shared/settlement-domain.ts";
 import { json } from "../_shared/http.ts";
+import { loadSettlementSnapshotForAuthUser } from "../_shared/settlement-store.ts";
+import { getActingAuthUserId, getSupabaseAdminClient } from "../_shared/supabase.ts";
 
-Deno.serve((request) => {
+Deno.serve(async (request) => {
   if (request.method !== "GET") {
     return json(405, { error: "Method not allowed" });
   }
 
-  return json(200, createStarterSettlementSnapshot());
+  try {
+    const client = getSupabaseAdminClient();
+    const authUserId = getActingAuthUserId(request);
+    const snapshot = await loadSettlementSnapshotForAuthUser(client, authUserId);
+
+    return json(200, snapshot);
+  } catch (error) {
+    return json(500, {
+      error: error instanceof Error ? error.message : "Failed to load settlement snapshot.",
+    });
+  }
 });

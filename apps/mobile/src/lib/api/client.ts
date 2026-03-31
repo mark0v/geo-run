@@ -18,6 +18,7 @@ import {
 } from "./mockServer";
 
 const USE_MOCK_API = true;
+const DEMO_AUTH_USER_ID = "00000000-0000-0000-0000-000000000001";
 const ACTIVITY_SYNC_ENDPOINT = "http://localhost:54321/functions/v1/activity-sync";
 const SETTLEMENT_ENDPOINT = "http://localhost:54321/functions/v1/settlement";
 const BUILD_ENDPOINT = "http://localhost:54321/functions/v1/actions-build";
@@ -30,7 +31,9 @@ export async function fetchSettlementSnapshot(): Promise<SettlementSnapshot> {
     return getMockSettlementSnapshot();
   }
 
-  const response = await fetch(SETTLEMENT_ENDPOINT);
+  const response = await fetch(SETTLEMENT_ENDPOINT, {
+    headers: authHeaders(),
+  });
 
   if (!response.ok) {
     throw new Error(`Failed to load settlement snapshot: ${response.status}`);
@@ -86,6 +89,7 @@ async function postJson<TRequest, TResponse>(url: string, payload: TRequest): Pr
     method: "POST",
     headers: {
       "content-type": "application/json",
+      ...authHeaders(),
     },
     body: JSON.stringify(payload),
   });
@@ -95,4 +99,10 @@ async function postJson<TRequest, TResponse>(url: string, payload: TRequest): Pr
   }
 
   return (await response.json()) as TResponse;
+}
+
+function authHeaders(): Record<string, string> {
+  return {
+    "x-player-auth-user-id": DEMO_AUTH_USER_ID,
+  };
 }

@@ -195,3 +195,5 @@ This is not a mobile-facing endpoint.
   every device or account.
 - `GET /settlement` should stay home-screen friendly. One request, one snapshot.
 - The mobile client should never write economy tables directly.
+- During local prototype development, edge functions may accept
+  `x-player-auth-user-id` to bind requests to a deterministic demo player.

@@ -302,6 +302,7 @@ Output:
 - rejected duplicates
 - granted resources
 - current balances
+- current settlement snapshot
 
 ### `GET /settlement`
 
@@ -325,6 +326,17 @@ Returns for each:
 - accepted or rejected result
 - updated settlement snapshot
 - validation message if rejected
+
+## Current implementation notes
+
+- The current edge-function vertical slice supports a seedable demo player via
+  the `x-player-auth-user-id` request header. If the header is absent, backend
+  code falls back to a deterministic demo UUID so local flows can bootstrap.
+- Persistence currently follows one logical mutation boundary per request, but
+  it is still implemented as multiple table writes inside the edge function.
+  The next hardening step is moving `build`, `upgrade`, `clear_tile`, and
+  `resolve_queue_item` into SQL RPC wrappers so queue resolution and building
+  state changes become physically transactional, not just logically grouped.
 
 ## Edge cases that matter now
 

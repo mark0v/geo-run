@@ -1,5 +1,13 @@
 import { UpgradeRequest } from "../_shared/contracts.ts";
 import { json, readJson } from "../_shared/http.ts";
+import { planUpgrade } from "../_shared/settlement-domain.ts";
+import {
+  appendActionLog,
+  ensurePlayerSettlement,
+  loadSettlementSnapshot,
+  persistAcceptedSnapshot,
+} from "../_shared/settlement-store.ts";
+import { getActingAuthUserId, getSupabaseAdminClient } from "../_shared/supabase.ts";
 
 Deno.serve(async (request) => {
   if (request.method !== "POST") {
@@ -14,10 +22,35 @@ Deno.serve(async (request) => {
     });
   }
 
-  return json(200, {
-    ok: false,
-    function: "actions-upgrade",
-    todo: "Validate building, next level, balances, and queue before creating upgrade action.",
-    payload: body,
-  });
+  try {
+    const client = getSupabaseAdminClient();
+    const authUserId = getActingAuthUserId(request);
+    const context = await ensurePlayerSettlement(client, authUserId);
+    const snapshot = await loadSettlementSnapshot(client, context.settlementId);
+    const planned = planUpgrade(snapshot, body);
+
+    if (!planned.ok) {
+      const rejected = {
+        status: "rejected" as const,
+        code: planned.error.code,
+        message: planned.error.message,
+      };
+      await appendActionLog(client, context.playerId, context.settlementId, "upgrade", body, rejected);
+      return json(200, rejected);
+    }
+
+    await persistAcceptedSnapshot(client, snapshot, planned.value);
+
+    const accepted = {
+      status: "accepted" as const,
+      message: "Upgrade started.",
+      snapshot: planned.value,
+    };
+    await appendActionLog(client, context.playerId, context.settlementId, "upgrade", body, accepted);
+    return json(200, accepted);
+  } catch (error) {
+    return json(500, {
+      error: error instanceof Error ? error.message : "Failed to start upgrade.",
+    });
+  }
 });
