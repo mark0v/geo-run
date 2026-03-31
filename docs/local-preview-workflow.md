@@ -50,9 +50,26 @@ npm run preview:status
 npm run preview:stop
 npm run preview:restart
 npm run preview:start:live
+npm run demo:seed
+npm run demo:reset
 ```
 
 Use `preview:restart` when you want a fresh export plus a clean server restart.
+
+## Demo player workflow
+
+For local live testing we keep one deterministic demo user wired through
+`x-player-auth-user-id`.
+
+Commands:
+
+```powershell
+npm run demo:reset
+npm run demo:seed
+```
+
+- `demo:reset` clears the local demo user and re-seeds a fresh starter settlement.
+- `demo:seed` loads the current settlement and prints a short summary.
 
 ## Notes
 

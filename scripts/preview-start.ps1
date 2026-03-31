@@ -8,14 +8,19 @@ param(
 
 $config = Get-PreviewConfig
 Ensure-PreviewRoot -Config $config
+$currentMode = Get-PreviewMode -Config $config
 
-if ($Rebuild -or -not (Test-Path (Join-Path $config.DistRoot "index.html"))) {
+if (
+  $Rebuild -or
+  -not (Test-Path (Join-Path $config.DistRoot "index.html")) -or
+  $currentMode -ne $Mode
+) {
   & "$PSScriptRoot\preview-build.ps1" -Mode $Mode
 }
 
 $runningProcess = Get-PreviewProcess -Config $config
 
-if ($runningProcess -and (Test-PreviewHealth -Config $config)) {
+if ($runningProcess -and (Test-PreviewHealth -Config $config) -and (Get-PreviewMode -Config $config) -eq $Mode) {
   Set-PreviewPid -Config $config -Pid $runningProcess.Id
   Write-Host "Preview already running at $($config.Url)"
   Write-Host "Mode: $(Get-PreviewMode -Config $config)"
