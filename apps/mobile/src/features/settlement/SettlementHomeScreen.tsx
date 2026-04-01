@@ -72,6 +72,8 @@ export function SettlementHomeScreen({
   const hasEastFog = snapshot.tiles.some(
     (tile) => (tile.state === "hidden" || tile.state === "blocked") && getTileX(tile.tileKey) > 0,
   );
+  const latestMilestone = snapshot.completedItems[0] ?? null;
+  const shouldShowEventPanel = Boolean(revealMoment || activeQueueItem);
   const actionPlan = getActionPlan({
     activeQueueItem,
     blockedTile,
@@ -156,20 +158,19 @@ export function SettlementHomeScreen({
           </View>
         </View>
 
-        <View style={styles.focusCardModern}>
-          <Text style={styles.focusEyebrow}>{sceneStatus.eyebrow}</Text>
-          <Text style={styles.focusTitle}>{sceneStatus.title}</Text>
-          <Text style={styles.focusBody}>{sceneStatus.body}</Text>
-        </View>
+        {shouldShowEventPanel ? (
+          <View style={styles.eventPanelModern}>
+            <Text style={styles.eventEyebrow}>{sceneStatus.eyebrow}</Text>
+            <Text style={styles.eventTitle}>{sceneStatus.title}</Text>
+            <Text style={styles.eventBody}>{sceneStatus.body}</Text>
+          </View>
+        ) : null}
 
         <View style={styles.actionSectionModern}>
           <View style={styles.sectionHeaderCompact}>
             <Text style={styles.sectionTitleCompact}>Tonight</Text>
             <Text style={styles.sectionMetaCompact}>{isSubmitting ? "Processing" : "Ready"}</Text>
           </View>
-          <Text style={styles.sectionLeadCompact}>
-            Collect the day, make one move, leave with a visible next change.
-          </Text>
 
           {actionPlan.primaryAction ? (
             <ActionButton
@@ -189,7 +190,7 @@ export function SettlementHomeScreen({
                 <SecondaryActionButton
                   key={action.key}
                   label={action.label}
-                  hint={action.hint}
+                  hint={compressActionHint(action.hint)}
                   disabled={isSubmitting}
                   onPress={action.onPress}
                 />
@@ -200,69 +201,44 @@ export function SettlementHomeScreen({
           {actionMessage ? <Text style={styles.actionMessage}>{actionMessage}</Text> : null}
         </View>
 
-        <View style={styles.territoryCardModern}>
-          <View style={styles.sectionHeaderCompact}>
-            <Text style={styles.sectionTitleCompact}>Territory</Text>
-            <Text style={styles.sectionMetaCompact}>{visibleTiles.length} visible</Text>
-          </View>
-          <View style={styles.territoryGridCompact}>
-            {sortedVisibleTiles.map((tile) => {
-              const building = buildingByTileKey.get(tile.tileKey);
-              const compactTile = getCompactTileStyle(tile.state);
-              const compactLabel = building
-                ? formatBuildingNameCompact(building.buildingType, building.level)
-                : formatCompactTileState(tile.state);
+        <View style={styles.homeDockRow}>
+          <View style={styles.dockCard}>
+            <Text style={styles.dockEyebrow}>Territory</Text>
+            <Text style={styles.dockTitle}>{visibleTiles.length} visible tiles</Text>
+            <View style={styles.dockMiniGrid}>
+              {sortedVisibleTiles.slice(0, 3).map((tile) => {
+                const building = buildingByTileKey.get(tile.tileKey);
+                const compactTile = getCompactTileStyle(tile.state);
+                const compactLabel = building
+                  ? formatBuildingNameCompact(building.buildingType, building.level)
+                  : formatCompactTileState(tile.state);
 
-              return (
-                <View
-                  key={tile.id}
-                  style={[
-                    styles.territoryTileCompact,
-                    compactTile.card,
-                    revealMoment?.tileKey === tile.tileKey ? styles.territoryTileReveal : null,
-                  ]}
-                >
-                  <Text style={[styles.territoryTileLabel, compactTile.label]}>{compactLabel}</Text>
-                  <Text style={[styles.territoryTileMeta, compactTile.meta]}>
-                    {formatTerrain(tile.terrainType)}
-                  </Text>
-                </View>
-              );
-            })}
-          </View>
-        </View>
-
-        <View style={styles.recordCardModern}>
-          <View style={styles.sectionHeaderCompact}>
-            <Text style={styles.sectionTitleCompact}>Settlement record</Text>
-            <Text style={styles.sectionMetaCompact}>{snapshot.completedItems.length} milestones</Text>
-          </View>
-
-          <View style={styles.recordSection}>
-            <Text style={styles.recordSectionTitle}>Built so far</Text>
-            <View style={styles.recordPillWrap}>
-              {snapshot.buildings.map((building) => (
-                <View key={building.id} style={styles.recordPill}>
-                  <Text style={styles.recordPillLabel}>
-                    {formatBuildingNameCompact(building.buildingType, building.level)}
-                  </Text>
-                </View>
-              ))}
+                return (
+                  <View
+                    key={tile.id}
+                    style={[
+                      styles.dockMiniTile,
+                      compactTile.card,
+                      revealMoment?.tileKey === tile.tileKey ? styles.territoryTileReveal : null,
+                    ]}
+                  >
+                    <Text style={[styles.dockMiniTileLabel, compactTile.label]}>{compactLabel}</Text>
+                  </View>
+                );
+              })}
             </View>
           </View>
 
-          <View style={styles.recordSection}>
-            <Text style={styles.recordSectionTitle}>Recent milestones</Text>
-            {snapshot.completedItems.length === 0 ? (
-              <Text style={styles.emptyState}>Complete a project to start the outpost history.</Text>
-            ) : (
-              snapshot.completedItems.slice(0, 3).map((item) => (
-                <View key={item.id} style={styles.recordRow}>
-                  <Text style={styles.recordRowTitle}>{item.title}</Text>
-                  <Text style={styles.recordRowMeta}>{formatTimestamp(item.completedAt)}</Text>
-                </View>
-              ))
-            )}
+          <View style={styles.dockCard}>
+            <Text style={styles.dockEyebrow}>Record</Text>
+            <Text style={styles.dockTitle}>
+              {latestMilestone ? latestMilestone.title : `${snapshot.buildings.length} structures standing`}
+            </Text>
+            <Text style={styles.dockBody}>
+              {latestMilestone
+                ? formatTimestamp(latestMilestone.completedAt)
+                : `${snapshot.completedItems.length} milestones recorded`}
+            </Text>
           </View>
         </View>
       </View>
@@ -581,6 +557,23 @@ function formatCompactTileState(state: SettlementSnapshot["tiles"][number]["stat
   }
 
   return "Occupied";
+}
+
+function compressActionHint(hint: string): string {
+  return hint
+    .replace("Spend ", "")
+    .replace("Supplies", "supplies")
+    .replace("Stone", "stone")
+    .replace(
+      "Convert today's walk into Supplies and Stone before you close the evening loop.",
+      "Sync the day into resources.",
+    )
+    .replace(
+      "Convert today's walk into supplies and stone before you close the evening loop.",
+      "Sync the day into resources.",
+    )
+    .replace("and widen the frontier board.", "and widen the frontier.")
+    .replace("to turn the camp into a working outpost.", "to anchor the outpost.");
 }
 
 function renderTerrainDecoration(terrainType: string, tileState: string) {
@@ -1320,6 +1313,31 @@ const styles = StyleSheet.create({
     borderRadius: 999,
     backgroundColor: "#c4611b",
   },
+  eventPanelModern: {
+    backgroundColor: "#2a1b12",
+    borderRadius: 18,
+    padding: 14,
+    borderWidth: 1,
+    borderColor: "#513625",
+  },
+  eventEyebrow: {
+    fontSize: 10,
+    textTransform: "uppercase",
+    letterSpacing: 0.9,
+    color: "#b18d64",
+    marginBottom: 6,
+  },
+  eventTitle: {
+    fontSize: 16,
+    fontWeight: "700",
+    color: "#f0e1c3",
+    marginBottom: 4,
+  },
+  eventBody: {
+    fontSize: 12,
+    lineHeight: 17,
+    color: "#bca17c",
+  },
   focusCardModern: {
     backgroundColor: "#f8edd8",
     borderRadius: 22,
@@ -1347,11 +1365,11 @@ const styles = StyleSheet.create({
     color: "#69563a",
   },
   actionSectionModern: {
-    backgroundColor: "#fff9ee",
+    backgroundColor: "#2a1b12",
     borderRadius: 22,
     padding: 16,
     borderWidth: 1,
-    borderColor: "#e4d5b9",
+    borderColor: "#513625",
   },
   sectionHeaderCompact: {
     flexDirection: "row",
@@ -1362,16 +1380,16 @@ const styles = StyleSheet.create({
   sectionTitleCompact: {
     fontSize: 18,
     fontWeight: "700",
-    color: "#352917",
+    color: "#f0e1c3",
   },
   sectionMetaCompact: {
     fontSize: 12,
-    color: "#8a7351",
+    color: "#b89870",
   },
   sectionLeadCompact: {
     fontSize: 14,
     lineHeight: 20,
-    color: "#6a573a",
+    color: "#c0a784",
     marginTop: 8,
     marginBottom: 12,
   },
@@ -1380,43 +1398,65 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   secondaryActionChip: {
-    borderRadius: 16,
+    borderRadius: 14,
     paddingHorizontal: 12,
-    paddingVertical: 11,
-    backgroundColor: "#f4ead6",
+    paddingVertical: 10,
+    backgroundColor: "#362419",
     borderWidth: 1,
-    borderColor: "#d8c49d",
+    borderColor: "#5a402d",
   },
   secondaryActionLabel: {
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: "700",
-    color: "#4a3720",
-    marginBottom: 4,
+    color: "#ead9b8",
+    marginBottom: 2,
   },
   secondaryActionHint: {
-    fontSize: 12,
-    lineHeight: 17,
-    color: "#6e5a3b",
+    fontSize: 11,
+    lineHeight: 15,
+    color: "#bca17c",
   },
-  territoryCardModern: {
-    backgroundColor: "#efe3c8",
-    borderRadius: 22,
-    padding: 16,
-    borderWidth: 1,
-    borderColor: "#dbc59b",
-  },
-  territoryGridCompact: {
+  homeDockRow: {
     flexDirection: "row",
-    flexWrap: "wrap",
     gap: 8,
-    marginTop: 12,
   },
-  territoryTileCompact: {
-    width: "31.8%",
-    minHeight: 68,
-    borderRadius: 16,
-    paddingHorizontal: 8,
-    paddingVertical: 10,
+  dockCard: {
+    flex: 1,
+    minHeight: 92,
+    borderRadius: 18,
+    padding: 12,
+    backgroundColor: "#2a1b12",
+    borderWidth: 1,
+    borderColor: "#513625",
+  },
+  dockEyebrow: {
+    fontSize: 10,
+    textTransform: "uppercase",
+    letterSpacing: 0.9,
+    color: "#b18d64",
+    marginBottom: 6,
+  },
+  dockTitle: {
+    fontSize: 14,
+    fontWeight: "700",
+    lineHeight: 18,
+    color: "#f0e1c3",
+  },
+  dockBody: {
+    fontSize: 12,
+    lineHeight: 16,
+    color: "#bca17c",
+    marginTop: 8,
+  },
+  dockMiniGrid: {
+    flexDirection: "row",
+    gap: 6,
+    marginTop: 10,
+  },
+  dockMiniTile: {
+    flex: 1,
+    minHeight: 34,
+    borderRadius: 12,
     justifyContent: "center",
     alignItems: "center",
     borderWidth: 1,
@@ -1428,16 +1468,11 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.16,
     shadowRadius: 12,
   },
-  territoryTileLabel: {
-    fontSize: 11,
+  dockMiniTileLabel: {
+    fontSize: 10,
     fontWeight: "700",
     textAlign: "center",
-    lineHeight: 15,
-  },
-  territoryTileMeta: {
-    fontSize: 10,
-    marginTop: 4,
-    textAlign: "center",
+    lineHeight: 13,
   },
   territoryTileOccupied: {
     backgroundColor: "#c4611b",

@@ -67,7 +67,9 @@ function AppContent() {
           )}
 
           <View style={styles.runtimeBar}>
-            <Text style={styles.runtimeBadge}>{runtime.mode === 'live' ? 'Live backend' : 'Mock mode'}</Text>
+            <Text style={styles.runtimeBadge}>
+              {runtime.mode === 'live' || source === 'network' ? 'Live backend' : 'Mock mode'}
+            </Text>
             <Text style={styles.runtimeText}>Source: {source ?? 'none'}</Text>
             <Text style={styles.runtimeText}>{isSubmitting ? 'Submitting action...' : 'Idle'}</Text>
           </View>
@@ -88,7 +90,7 @@ function AppContent() {
 const styles = StyleSheet.create({
   screen: {
     flex: 1,
-    backgroundColor: '#f4efe5',
+    backgroundColor: '#1a110b',
   },
   content: {
     padding: 14,
@@ -126,8 +128,8 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   runtimeBadge: {
-    backgroundColor: '#efe3c7',
-    color: '#4f3d26',
+    backgroundColor: '#332116',
+    color: '#d5b686',
     borderRadius: 999,
     paddingHorizontal: 12,
     paddingVertical: 7,
@@ -139,7 +141,7 @@ const styles = StyleSheet.create({
   },
   runtimeText: {
     fontSize: 13,
-    color: '#6c5a40',
+    color: '#b79874',
   },
   errorCard: {
     marginTop: 16,
