@@ -16,7 +16,7 @@ interface SettlementHomeScreenProps {
 }
 
 type ActionCardTone = "primary" | "secondary";
-type SheetKind = "territory" | "record" | null;
+type SheetKind = "territory" | "record" | "build" | null;
 
 interface SettlementActionItem {
   key: string;
@@ -25,6 +25,52 @@ interface SettlementActionItem {
   tone: ActionCardTone;
   onPress: () => void;
 }
+
+interface BuildPickerOption {
+  buildingType: Exclude<BuildingType, "camp">;
+  label: string;
+  costSupplies: number;
+  costStone: number;
+  note: string;
+}
+
+const BUILD_PICKER_OPTIONS: BuildPickerOption[] = [
+  {
+    buildingType: "workshop",
+    label: "Workshop",
+    costSupplies: 40,
+    costStone: 0,
+    note: "Anchors the outpost and unlocks the first strong milestone.",
+  },
+  {
+    buildingType: "hut",
+    label: "Hut",
+    costSupplies: 30,
+    costStone: 0,
+    note: "Adds warmth and makes the camp feel inhabited.",
+  },
+  {
+    buildingType: "well",
+    label: "Well",
+    costSupplies: 25,
+    costStone: 0,
+    note: "A compact utility build that makes the settlement feel grounded.",
+  },
+  {
+    buildingType: "storehouse",
+    label: "Storehouse",
+    costSupplies: 50,
+    costStone: 0,
+    note: "Signals permanence and prepares the outpost for larger growth.",
+  },
+  {
+    buildingType: "watchtower",
+    label: "Watchtower",
+    costSupplies: 60,
+    costStone: 0,
+    note: "A frontier landmark that makes expansion feel intentional.",
+  },
+];
 
 export function SettlementHomeScreen({
   snapshot,
@@ -76,11 +122,13 @@ export function SettlementHomeScreen({
   );
   const latestMilestone = snapshot.completedItems[0] ?? null;
   const shouldShowEventPanel = Boolean(revealMoment || activeQueueItem);
+  const buildOptions = getBuildPickerOptions(snapshot, openBuildTile?.tileKey);
   const actionPlan = getActionPlan({
     activeQueueItem,
     blockedTile,
     openBuildTile,
     workshop,
+    onOpenBuildPicker: () => setActiveSheet("build"),
     onBuild,
     onClearTile,
     onResolveQueueItem,
@@ -265,12 +313,18 @@ export function SettlementHomeScreen({
             <View style={styles.sheetHeader}>
               <View style={styles.sheetHeaderCopy}>
                 <Text style={styles.sheetEyebrow}>
-                  {activeSheet === "territory" ? "Territory" : "Settlement record"}
+                  {activeSheet === "territory"
+                    ? "Territory"
+                    : activeSheet === "record"
+                      ? "Settlement record"
+                      : "Build"}
                 </Text>
                 <Text style={styles.sheetTitle}>
                   {activeSheet === "territory"
                     ? "Frontier details"
-                    : "What the outpost remembers"}
+                    : activeSheet === "record"
+                      ? "What the outpost remembers"
+                      : "Choose the next structure"}
                 </Text>
               </View>
               <Pressable
@@ -349,6 +403,59 @@ export function SettlementHomeScreen({
                 </View>
               </View>
             ) : null}
+
+            {activeSheet === "build" ? (
+              <View style={styles.sheetSection}>
+                <Text style={styles.sheetLead}>
+                  Pick one structure for tile {openBuildTile?.tileKey ?? "?"}. The first build should give
+                  the settlement a clear new silhouette.
+                </Text>
+                <View style={styles.buildOptionList}>
+                  {buildOptions.map((option) => (
+                    <Pressable
+                      key={option.buildingType}
+                      accessibilityRole="button"
+                      disabled={!option.enabled || isSubmitting}
+                      onPress={() => {
+                        if (!openBuildTile || !option.enabled) {
+                          return;
+                        }
+
+                        onBuild(openBuildTile.tileKey, option.buildingType);
+                        setActiveSheet(null);
+                      }}
+                      style={({ pressed }) => [
+                        styles.buildOptionCard,
+                        option.recommended ? styles.buildOptionCardRecommended : null,
+                        !option.enabled || isSubmitting ? styles.actionButtonDisabled : null,
+                        pressed && option.enabled && !isSubmitting ? styles.dockCardPressed : null,
+                      ]}
+                    >
+                      <View style={styles.buildOptionHeader}>
+                        <View>
+                          <Text style={styles.buildOptionTitle}>{option.label}</Text>
+                          <Text style={styles.buildOptionNote}>{option.note}</Text>
+                        </View>
+                        {option.recommended ? (
+                          <View style={styles.buildOptionBadge}>
+                            <Text style={styles.buildOptionBadgeLabel}>Recommended</Text>
+                          </View>
+                        ) : null}
+                      </View>
+                      <View style={styles.buildOptionCostRow}>
+                        <Text style={styles.buildOptionCost}>
+                          {option.costSupplies} supplies
+                          {option.costStone > 0 ? `, ${option.costStone} stone` : ""}
+                        </Text>
+                        <Text style={styles.buildOptionStatus}>
+                          {option.enabled ? "Can build" : "Not enough resources"}
+                        </Text>
+                      </View>
+                    </Pressable>
+                  ))}
+                </View>
+              </View>
+            ) : null}
           </View>
         </View>
       ) : null}
@@ -418,6 +525,7 @@ function getActionPlan({
   blockedTile,
   openBuildTile,
   workshop,
+  onOpenBuildPicker,
   onBuild,
   onClearTile,
   onResolveQueueItem,
@@ -428,6 +536,7 @@ function getActionPlan({
   blockedTile?: SettlementSnapshot["tiles"][number];
   openBuildTile?: SettlementSnapshot["tiles"][number];
   workshop?: SettlementSnapshot["buildings"][number];
+  onOpenBuildPicker: () => void;
   onBuild: SettlementHomeScreenProps["onBuild"];
   onClearTile: SettlementHomeScreenProps["onClearTile"];
   onResolveQueueItem: SettlementHomeScreenProps["onResolveQueueItem"];
@@ -448,11 +557,11 @@ function getActionPlan({
 
   if (!activeQueueItem && openBuildTile) {
     actions.push({
-      key: "build-workshop",
-      label: "Build workshop",
-      hint: `Spend 40 Supplies on tile ${openBuildTile.tileKey} to turn the camp into a working outpost.`,
+      key: "open-build-picker",
+      label: "Choose next build",
+      hint: `Tile ${openBuildTile.tileKey} is open. Pick the structure that should define the next stage of the outpost.`,
       tone: "primary",
-      onPress: () => onBuild(openBuildTile.tileKey, "workshop"),
+      onPress: onOpenBuildPicker,
     });
   }
 
@@ -650,6 +759,20 @@ function getCompactTileStyle(state: SettlementSnapshot["tiles"][number]["state"]
     label: styles.territoryTileClearedLabel,
     meta: styles.territoryTileClearedMeta,
   };
+}
+
+function getBuildPickerOptions(snapshot: SettlementSnapshot, openTileKey?: string) {
+  const hasWorkshop = snapshot.buildings.some((building) => building.buildingType === "workshop");
+  const balances = snapshot.settlement.balances;
+
+  return BUILD_PICKER_OPTIONS.map((option) => ({
+    ...option,
+    enabled:
+      Boolean(openTileKey) &&
+      balances.supplies >= option.costSupplies &&
+      balances.stone >= option.costStone,
+    recommended: option.buildingType === (hasWorkshop ? "hut" : "workshop"),
+  }));
 }
 
 function formatBuildingNameCompact(buildingType: BuildingType, level: number): string {
@@ -1688,6 +1811,66 @@ const styles = StyleSheet.create({
     fontSize: 10,
     marginTop: 3,
     textAlign: "center",
+  },
+  buildOptionList: {
+    gap: 10,
+  },
+  buildOptionCard: {
+    borderRadius: 18,
+    padding: 14,
+    backgroundColor: "#2b1c12",
+    borderWidth: 1,
+    borderColor: "#513625",
+  },
+  buildOptionCardRecommended: {
+    backgroundColor: "#3a2415",
+    borderColor: "#b06a2a",
+  },
+  buildOptionHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "flex-start",
+    gap: 12,
+  },
+  buildOptionTitle: {
+    fontSize: 16,
+    fontWeight: "700",
+    color: "#f0e1c3",
+    marginBottom: 4,
+  },
+  buildOptionNote: {
+    fontSize: 12,
+    lineHeight: 17,
+    color: "#c0a784",
+    maxWidth: 220,
+  },
+  buildOptionBadge: {
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 999,
+    backgroundColor: "#f0d6a2",
+  },
+  buildOptionBadgeLabel: {
+    fontSize: 10,
+    fontWeight: "700",
+    color: "#5a3716",
+    textTransform: "uppercase",
+    letterSpacing: 0.8,
+  },
+  buildOptionCostRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginTop: 12,
+    gap: 10,
+  },
+  buildOptionCost: {
+    fontSize: 12,
+    color: "#ead9b8",
+  },
+  buildOptionStatus: {
+    fontSize: 11,
+    color: "#b18d64",
   },
   territoryTileOccupied: {
     backgroundColor: "#c4611b",
