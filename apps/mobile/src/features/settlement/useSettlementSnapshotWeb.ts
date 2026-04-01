@@ -12,6 +12,7 @@ import type {
   SettlementActionResponse,
   SettlementSnapshot,
 } from "../../lib/api/contracts";
+import { deriveRevealMoment, type SettlementRevealMoment } from "./reveal";
 
 interface SettlementSnapshotWebState {
   snapshot: SettlementSnapshot | null;
@@ -19,6 +20,7 @@ interface SettlementSnapshotWebState {
   isSubmitting: boolean;
   error: string | null;
   actionMessage: string | null;
+  revealMoment: SettlementRevealMoment | null;
   source: "network" | null;
   startBuildAction: (tileKey: string, buildingType: Exclude<BuildingType, "camp">) => Promise<void>;
   startClearTileAction: (tileKey: string) => Promise<void>;
@@ -43,6 +45,7 @@ export function useSettlementSnapshotWeb(): SettlementSnapshotWebState {
     isSubmitting: false,
     error: null,
     actionMessage: null,
+    revealMoment: null,
     source: null,
   });
 
@@ -61,6 +64,7 @@ export function useSettlementSnapshotWeb(): SettlementSnapshotWebState {
               isSubmitting: false,
               error: null,
               actionMessage: null,
+              revealMoment: null,
               source: "network",
             });
           });
@@ -75,6 +79,7 @@ export function useSettlementSnapshotWeb(): SettlementSnapshotWebState {
               isLoading: false,
               isSubmitting: false,
               error: message,
+              revealMoment: previous.revealMoment,
             }));
           });
         }
@@ -95,10 +100,12 @@ export function useSettlementSnapshotWeb(): SettlementSnapshotWebState {
         isSubmitting: true,
         error: null,
         actionMessage: null,
+        revealMoment: null,
       }));
     });
 
     try {
+      const previousSnapshot = state.snapshot;
       const response = await run();
 
       if (response.status === "rejected") {
@@ -107,6 +114,7 @@ export function useSettlementSnapshotWeb(): SettlementSnapshotWebState {
             ...previous,
             isSubmitting: false,
             actionMessage: response.message,
+            revealMoment: null,
           }));
         });
         return;
@@ -119,6 +127,7 @@ export function useSettlementSnapshotWeb(): SettlementSnapshotWebState {
           isSubmitting: false,
           error: null,
           actionMessage: response.message,
+          revealMoment: deriveRevealMoment(previousSnapshot, response.snapshot),
           source: "network",
         }));
       });
@@ -130,6 +139,7 @@ export function useSettlementSnapshotWeb(): SettlementSnapshotWebState {
           ...previous,
           isSubmitting: false,
           error: message,
+          revealMoment: previous.revealMoment,
         }));
       });
     }
@@ -187,10 +197,11 @@ export function useSettlementSnapshotWeb(): SettlementSnapshotWebState {
   async function syncTodayActivityAction(): Promise<void> {
     startTransition(() => {
       setState((previous) => ({
-        ...previous,
-        isSubmitting: true,
-        error: null,
-        actionMessage: null,
+          ...previous,
+          isSubmitting: true,
+          error: null,
+          actionMessage: null,
+          revealMoment: null,
       }));
     });
 
@@ -222,6 +233,7 @@ export function useSettlementSnapshotWeb(): SettlementSnapshotWebState {
             response.acceptedWindows > 0
               ? `Synced today: +${response.grants.supplies} Supplies, +${response.grants.stone} Stone.`
               : "Today's activity was already synced.",
+          revealMoment: null,
           source: "network",
         }));
       });
@@ -233,6 +245,7 @@ export function useSettlementSnapshotWeb(): SettlementSnapshotWebState {
           ...previous,
           isSubmitting: false,
           error: message,
+          revealMoment: previous.revealMoment,
         }));
       });
     }

@@ -22,6 +22,7 @@ function AppContent() {
     isSubmitting,
     error,
     actionMessage,
+    revealMoment,
     source,
     syncTodayActivityAction,
     startBuildAction,
@@ -39,6 +40,7 @@ function AppContent() {
               snapshot={snapshot}
               isSubmitting={isSubmitting}
               actionMessage={actionMessage}
+              revealMoment={revealMoment}
               onSyncTodayActivity={() => {
                 void syncTodayActivityAction();
               }}

@@ -13,6 +13,7 @@ export default function App() {
     isSubmitting,
     error,
     actionMessage,
+    revealMoment,
     source,
     syncTodayActivityAction,
     startBuildAction,
@@ -30,6 +31,7 @@ export default function App() {
               snapshot={snapshot}
               isSubmitting={isSubmitting}
               actionMessage={actionMessage}
+              revealMoment={revealMoment}
               onSyncTodayActivity={() => {
                 void syncTodayActivityAction();
               }}

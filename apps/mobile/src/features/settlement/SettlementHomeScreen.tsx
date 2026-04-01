@@ -1,11 +1,13 @@
 import React from "react";
 import { Pressable, StyleSheet, Text, useWindowDimensions, View } from "react-native";
 import type { BuildingType, SettlementSnapshot } from "../../lib/api/contracts";
+import type { SettlementRevealMoment } from "./reveal";
 
 interface SettlementHomeScreenProps {
   snapshot: SettlementSnapshot;
   isSubmitting: boolean;
   actionMessage: string | null;
+  revealMoment: SettlementRevealMoment | null;
   onSyncTodayActivity: () => void;
   onBuild: (tileKey: string, buildingType: Exclude<BuildingType, "camp">) => void;
   onClearTile: (tileKey: string) => void;
@@ -27,6 +29,7 @@ export function SettlementHomeScreen({
   snapshot,
   isSubmitting,
   actionMessage,
+  revealMoment,
   onSyncTodayActivity,
   onBuild,
   onClearTile,
@@ -108,6 +111,16 @@ export function SettlementHomeScreen({
         <Text style={styles.goalTitle}>{nextGoal.title}</Text>
         <Text style={styles.goalBody}>{nextGoal.body}</Text>
       </View>
+
+      {revealMoment ? (
+        <View style={styles.revealCard}>
+          <View style={styles.revealBadge}>
+            <Text style={styles.revealBadgeLabel}>Just completed</Text>
+          </View>
+          <Text style={styles.revealTitle}>{revealMoment.title}</Text>
+          <Text style={styles.revealBody}>{revealMoment.body}</Text>
+        </View>
+      ) : null}
 
       <View style={[styles.topSplit, isWide ? styles.topSplitWide : null]}>
         <View style={[styles.topPrimary, isWide ? styles.topPrimaryWide : null]}>
@@ -214,7 +227,15 @@ export function SettlementHomeScreen({
                   const tileSummary = getTileSummary(tile.state, tile.terrainType, building?.buildingType);
 
                   return (
-                    <View key={tile.id} style={[styles.tileCard, tileStyle.card]}>
+                    <View
+                      key={tile.id}
+                      style={[
+                        styles.tileCard,
+                        tileStyle.card,
+                        revealMoment?.tileKey === tile.tileKey ? styles.tileCardReveal : null,
+                      ]}
+                    >
+                      {revealMoment?.tileKey === tile.tileKey ? <View style={styles.tileRevealHalo} /> : null}
                       <View style={styles.tileHeader}>
                         <View>
                           <Text style={[styles.tileTerrain, tileStyle.terrain]}>
@@ -678,6 +699,46 @@ const styles = StyleSheet.create({
     flex: 1,
     gap: 16,
   },
+  revealCard: {
+    backgroundColor: "#f3e5bf",
+    borderRadius: 22,
+    padding: 18,
+    borderWidth: 1,
+    borderColor: "#cfb074",
+    shadowColor: "#8f6a2a",
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.14,
+    shadowRadius: 18,
+  },
+  revealBadge: {
+    alignSelf: "flex-start",
+    backgroundColor: "#fff5dd",
+    borderRadius: 999,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderWidth: 1,
+    borderColor: "#dcc08d",
+    marginBottom: 10,
+  },
+  revealBadgeLabel: {
+    fontSize: 11,
+    fontWeight: "700",
+    textTransform: "uppercase",
+    letterSpacing: 1,
+    color: "#876538",
+  },
+  revealTitle: {
+    fontSize: 22,
+    fontWeight: "700",
+    color: "#392715",
+    marginBottom: 6,
+  },
+  revealBody: {
+    fontSize: 14,
+    lineHeight: 21,
+    color: "#6a5638",
+    maxWidth: 860,
+  },
   goalCard: {
     backgroundColor: "#fbf2de",
     borderRadius: 20,
@@ -1048,6 +1109,22 @@ const styles = StyleSheet.create({
     borderRadius: 18,
     padding: 12,
     borderWidth: 1,
+    overflow: "hidden",
+  },
+  tileCardReveal: {
+    borderColor: "#c49743",
+    shadowColor: "#ad8430",
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.18,
+    shadowRadius: 18,
+  },
+  tileRevealHalo: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    height: 44,
+    backgroundColor: "rgba(250, 233, 186, 0.6)",
   },
   tileHeader: {
     flexDirection: "row",
