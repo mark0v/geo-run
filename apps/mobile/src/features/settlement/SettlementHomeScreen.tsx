@@ -13,6 +13,16 @@ interface SettlementHomeScreenProps {
   onResolveQueueItem: () => void;
 }
 
+type ActionCardTone = "primary" | "secondary";
+
+interface SettlementActionItem {
+  key: string;
+  label: string;
+  hint: string;
+  tone: ActionCardTone;
+  onPress: () => void;
+}
+
 export function SettlementHomeScreen({
   snapshot,
   isSubmitting,
@@ -43,6 +53,17 @@ export function SettlementHomeScreen({
     blockedTileKey: blockedTile?.tileKey,
     hasWorkshop: Boolean(workshop),
     openBuildTileKey: openBuildTile?.tileKey,
+  });
+  const actionPlan = getActionPlan({
+    activeQueueItem,
+    blockedTile,
+    openBuildTile,
+    workshop,
+    onBuild,
+    onClearTile,
+    onResolveQueueItem,
+    onSyncTodayActivity,
+    onUpgrade,
   });
 
   return (
@@ -120,63 +141,52 @@ export function SettlementHomeScreen({
               The session should take two or three minutes: collect the day, make one decision,
               leave with a visible next target.
             </Text>
-            <ActionButton
-              label="Sync today's activity"
-              hint="Demo sync 8,400 steps and 6 floors into Supplies and Stone."
-              disabled={isSubmitting}
-              onPress={onSyncTodayActivity}
-            />
 
             {activeQueueItem ? (
-              <>
-                <View style={styles.queueCard}>
-                  <Text style={styles.queueEyebrow}>Project in motion</Text>
-                  <Text style={styles.queueTitle}>{formatQueueAction(activeQueueItem.actionType)}</Text>
-                  <Text style={styles.queueMeta}>
-                    Resolves at {formatTimestamp(activeQueueItem.completeAt)}
+              <View style={styles.queueCard}>
+                <Text style={styles.queueEyebrow}>Project in motion</Text>
+                <Text style={styles.queueTitle}>{formatQueueAction(activeQueueItem.actionType)}</Text>
+                <Text style={styles.queueMeta}>
+                  Resolves at {formatTimestamp(activeQueueItem.completeAt)}
+                </Text>
+              </View>
+            ) : null}
+
+            {actionPlan.primaryAction ? (
+              <View style={styles.primaryActionPanel}>
+                <View style={styles.primaryActionHeader}>
+                  <Text style={styles.primaryActionEyebrow}>Recommended move</Text>
+                  <Text style={styles.primaryActionMeta}>
+                    {activeQueueItem ? "Finish first" : "Best next step"}
                   </Text>
                 </View>
                 <ActionButton
-                  label="Resolve current project"
-                  hint="Finish the active queue item and reveal the next state."
+                  label={actionPlan.primaryAction.label}
+                  hint={actionPlan.primaryAction.hint}
                   disabled={isSubmitting}
-                  onPress={onResolveQueueItem}
+                  onPress={actionPlan.primaryAction.onPress}
+                  tone={actionPlan.primaryAction.tone}
                 />
-              </>
+              </View>
             ) : (
-              <>
-                {openBuildTile ? (
-                  <ActionButton
-                    label="Build workshop"
-                    hint={`Spend 40 Supplies on tile ${openBuildTile.tileKey}.`}
-                    disabled={isSubmitting}
-                    onPress={() => onBuild(openBuildTile.tileKey, "workshop")}
-                  />
-                ) : null}
-
-                {blockedTile ? (
-                  <ActionButton
-                    label="Clear blocked tile"
-                    hint={`Spend 30 Supplies to open ${blockedTile.tileKey}.`}
-                    disabled={isSubmitting}
-                    onPress={() => onClearTile(blockedTile.tileKey)}
-                  />
-                ) : null}
-
-                {workshop?.state === "complete" ? (
-                  <ActionButton
-                    label="Upgrade workshop"
-                    hint={`Spend 60 Supplies and 4 Stone to upgrade ${workshop.id}.`}
-                    disabled={isSubmitting}
-                    onPress={() => onUpgrade(workshop.id)}
-                  />
-                ) : null}
-
-                {!openBuildTile && !blockedTile && workshop?.state !== "complete" ? (
-                  <Text style={styles.emptyState}>No settlement action is available yet.</Text>
-                ) : null}
-              </>
+              <Text style={styles.emptyState}>No settlement action is available yet.</Text>
             )}
+
+            {actionPlan.secondaryActions.length > 0 ? (
+              <View style={styles.secondaryActionsPanel}>
+                <Text style={styles.secondaryActionsTitle}>Other options tonight</Text>
+                {actionPlan.secondaryActions.map((action) => (
+                  <ActionButton
+                    key={action.key}
+                    label={action.label}
+                    hint={action.hint}
+                    disabled={isSubmitting}
+                    onPress={action.onPress}
+                    tone={action.tone}
+                  />
+                ))}
+              </View>
+            ) : null}
 
             {actionMessage ? <Text style={styles.actionMessage}>{actionMessage}</Text> : null}
           </View>
@@ -291,9 +301,10 @@ interface ActionButtonProps {
   hint: string;
   disabled: boolean;
   onPress: () => void;
+  tone: ActionCardTone;
 }
 
-function ActionButton({ label, hint, disabled, onPress }: ActionButtonProps) {
+function ActionButton({ label, hint, disabled, onPress, tone }: ActionButtonProps) {
   return (
     <Pressable
       accessibilityRole="button"
@@ -301,6 +312,7 @@ function ActionButton({ label, hint, disabled, onPress }: ActionButtonProps) {
       onPress={onPress}
       style={({ pressed }) => [
         styles.actionButton,
+        tone === "primary" ? styles.actionButtonPrimary : styles.actionButtonSecondary,
         disabled ? styles.actionButtonDisabled : null,
         pressed && !disabled ? styles.actionButtonPressed : null,
       ]}
@@ -309,6 +321,85 @@ function ActionButton({ label, hint, disabled, onPress }: ActionButtonProps) {
       <Text style={styles.actionHint}>{hint}</Text>
     </Pressable>
   );
+}
+
+function getActionPlan({
+  activeQueueItem,
+  blockedTile,
+  openBuildTile,
+  workshop,
+  onBuild,
+  onClearTile,
+  onResolveQueueItem,
+  onSyncTodayActivity,
+  onUpgrade,
+}: {
+  activeQueueItem: SettlementSnapshot["activeQueueItem"];
+  blockedTile?: SettlementSnapshot["tiles"][number];
+  openBuildTile?: SettlementSnapshot["tiles"][number];
+  workshop?: SettlementSnapshot["buildings"][number];
+  onBuild: SettlementHomeScreenProps["onBuild"];
+  onClearTile: SettlementHomeScreenProps["onClearTile"];
+  onResolveQueueItem: SettlementHomeScreenProps["onResolveQueueItem"];
+  onSyncTodayActivity: SettlementHomeScreenProps["onSyncTodayActivity"];
+  onUpgrade: SettlementHomeScreenProps["onUpgrade"];
+}) {
+  const actions: SettlementActionItem[] = [];
+
+  if (activeQueueItem) {
+    actions.push({
+      key: "resolve",
+      label: "Resolve current project",
+      hint: "Finish the active queue item and reveal the next visible change in the outpost.",
+      tone: "primary",
+      onPress: onResolveQueueItem,
+    });
+  }
+
+  if (!activeQueueItem && openBuildTile) {
+    actions.push({
+      key: "build-workshop",
+      label: "Build workshop",
+      hint: `Spend 40 Supplies on tile ${openBuildTile.tileKey} to turn the camp into a working outpost.`,
+      tone: "primary",
+      onPress: () => onBuild(openBuildTile.tileKey, "workshop"),
+    });
+  }
+
+  if (!activeQueueItem && blockedTile) {
+    actions.push({
+      key: "clear-tile",
+      label: "Clear blocked tile",
+      hint: `Spend 30 Supplies to open ${blockedTile.tileKey} and widen the frontier board.`,
+      tone: actions.length === 0 ? "primary" : "secondary",
+      onPress: () => onClearTile(blockedTile.tileKey),
+    });
+  }
+
+  if (!activeQueueItem && workshop?.state === "complete") {
+    actions.push({
+      key: "upgrade-workshop",
+      label: "Upgrade workshop",
+      hint: `Spend 60 Supplies and 4 Stone to upgrade ${workshop.id} and deepen the settlement silhouette.`,
+      tone: actions.length === 0 ? "primary" : "secondary",
+      onPress: () => onUpgrade(workshop.id),
+    });
+  }
+
+  actions.push({
+    key: "collect-activity",
+    label: "Collect today's movement",
+    hint: "Convert today's walk into Supplies and Stone before you close the evening loop.",
+    tone: actions.length === 0 ? "primary" : "secondary",
+    onPress: onSyncTodayActivity,
+  });
+
+  const [primaryAction, ...secondaryActions] = actions;
+
+  return {
+    primaryAction,
+    secondaryActions,
+  };
 }
 
 function renderTerrainDecoration(terrainType: string, tileState: string) {
@@ -814,12 +905,23 @@ const styles = StyleSheet.create({
     marginBottom: 14,
   },
   actionButton: {
-    backgroundColor: "#f3ead5",
     borderRadius: 18,
     padding: 16,
     marginBottom: 10,
     borderWidth: 1,
-    borderColor: "#cfbc99",
+  },
+  actionButtonPrimary: {
+    backgroundColor: "#f0dfb7",
+    borderColor: "#c8ac72",
+    paddingVertical: 18,
+    shadowColor: "#8f6a2a",
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.14,
+    shadowRadius: 18,
+  },
+  actionButtonSecondary: {
+    backgroundColor: "#f7f0df",
+    borderColor: "#d7c5a1",
   },
   actionButtonDisabled: {
     opacity: 0.55,
@@ -838,6 +940,41 @@ const styles = StyleSheet.create({
     fontSize: 14,
     lineHeight: 20,
     color: "#6b5637",
+  },
+  primaryActionPanel: {
+    marginTop: 2,
+    marginBottom: 10,
+  },
+  primaryActionHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 10,
+    gap: 10,
+  },
+  primaryActionEyebrow: {
+    fontSize: 11,
+    textTransform: "uppercase",
+    letterSpacing: 1,
+    color: "#8a663a",
+  },
+  primaryActionMeta: {
+    fontSize: 12,
+    color: "#887151",
+  },
+  secondaryActionsPanel: {
+    marginTop: 6,
+    paddingTop: 14,
+    borderTopWidth: 1,
+    borderTopColor: "#e2d5bc",
+  },
+  secondaryActionsTitle: {
+    fontSize: 13,
+    fontWeight: "700",
+    color: "#6d5738",
+    marginBottom: 10,
+    textTransform: "uppercase",
+    letterSpacing: 0.9,
   },
   queueCard: {
     backgroundColor: "#ecdfc2",
