@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 import { Pressable, StyleSheet, Text, useWindowDimensions, View } from "react-native";
 import type { BuildingType, SettlementBuilding, SettlementSnapshot } from "../../lib/api/contracts";
 import type { SettlementRevealMoment } from "./reveal";
@@ -16,6 +16,7 @@ interface SettlementHomeScreenProps {
 }
 
 type ActionCardTone = "primary" | "secondary";
+type SheetKind = "territory" | "record" | null;
 
 interface SettlementActionItem {
   key: string;
@@ -36,6 +37,7 @@ export function SettlementHomeScreen({
   onUpgrade,
   onResolveQueueItem,
 }: SettlementHomeScreenProps) {
+  const [activeSheet, setActiveSheet] = useState<SheetKind>(null);
   const { width } = useWindowDimensions();
   const isWide = width >= 560;
   const visibleTiles = snapshot.tiles.filter((tile) => tile.state !== "hidden");
@@ -202,7 +204,11 @@ export function SettlementHomeScreen({
         </View>
 
         <View style={styles.homeDockRow}>
-          <View style={styles.dockCard}>
+          <Pressable
+            accessibilityRole="button"
+            onPress={() => setActiveSheet("territory")}
+            style={({ pressed }) => [styles.dockCard, pressed ? styles.dockCardPressed : null]}
+          >
             <Text style={styles.dockEyebrow}>Territory</Text>
             <Text style={styles.dockTitle}>{visibleTiles.length} visible tiles</Text>
             <View style={styles.dockMiniGrid}>
@@ -227,9 +233,13 @@ export function SettlementHomeScreen({
                 );
               })}
             </View>
-          </View>
+          </Pressable>
 
-          <View style={styles.dockCard}>
+          <Pressable
+            accessibilityRole="button"
+            onPress={() => setActiveSheet("record")}
+            style={({ pressed }) => [styles.dockCard, pressed ? styles.dockCardPressed : null]}
+          >
             <Text style={styles.dockEyebrow}>Record</Text>
             <Text style={styles.dockTitle}>
               {latestMilestone ? latestMilestone.title : `${snapshot.buildings.length} structures standing`}
@@ -239,9 +249,109 @@ export function SettlementHomeScreen({
                 ? formatTimestamp(latestMilestone.completedAt)
                 : `${snapshot.completedItems.length} milestones recorded`}
             </Text>
-          </View>
+          </Pressable>
         </View>
       </View>
+
+      {activeSheet ? (
+        <View style={styles.sheetOverlay}>
+          <Pressable
+            accessibilityRole="button"
+            style={styles.sheetBackdrop}
+            onPress={() => setActiveSheet(null)}
+          />
+          <View style={styles.sheetCard}>
+            <View style={styles.sheetGrabber} />
+            <View style={styles.sheetHeader}>
+              <View style={styles.sheetHeaderCopy}>
+                <Text style={styles.sheetEyebrow}>
+                  {activeSheet === "territory" ? "Territory" : "Settlement record"}
+                </Text>
+                <Text style={styles.sheetTitle}>
+                  {activeSheet === "territory"
+                    ? "Frontier details"
+                    : "What the outpost remembers"}
+                </Text>
+              </View>
+              <Pressable
+                accessibilityRole="button"
+                onPress={() => setActiveSheet(null)}
+                style={({ pressed }) => [
+                  styles.sheetCloseButton,
+                  pressed ? styles.dockCardPressed : null,
+                ]}
+              >
+                <Text style={styles.sheetCloseLabel}>Close</Text>
+              </Pressable>
+            </View>
+
+            {activeSheet === "territory" ? (
+              <View style={styles.sheetSection}>
+                <Text style={styles.sheetLead}>
+                  Cleared land is ready for building. Blocked edges mark the next expansion target.
+                </Text>
+                <View style={styles.sheetTerritoryGrid}>
+                  {sortedVisibleTiles.map((tile) => {
+                    const building = buildingByTileKey.get(tile.tileKey);
+                    const compactTile = getCompactTileStyle(tile.state);
+                    const compactLabel = building
+                      ? formatBuildingNameCompact(building.buildingType, building.level)
+                      : formatCompactTileState(tile.state);
+
+                    return (
+                      <View
+                        key={tile.id}
+                        style={[
+                          styles.sheetTerritoryTile,
+                          compactTile.card,
+                          revealMoment?.tileKey === tile.tileKey ? styles.territoryTileReveal : null,
+                        ]}
+                      >
+                        <Text style={[styles.sheetTerritoryLabel, compactTile.label]}>{compactLabel}</Text>
+                        <Text style={[styles.sheetTerritoryMeta, compactTile.meta]}>
+                          {formatTerrain(tile.terrainType)}
+                        </Text>
+                        <Text style={[styles.sheetTerritoryKey, compactTile.meta]}>{tile.tileKey}</Text>
+                      </View>
+                    );
+                  })}
+                </View>
+              </View>
+            ) : null}
+
+            {activeSheet === "record" ? (
+              <View style={styles.sheetSection}>
+                <View style={styles.recordSection}>
+                  <Text style={styles.recordSectionTitle}>Built so far</Text>
+                  <View style={styles.recordPillWrap}>
+                    {snapshot.buildings.map((building) => (
+                      <View key={building.id} style={styles.recordPill}>
+                        <Text style={styles.recordPillLabel}>
+                          {formatBuildingNameCompact(building.buildingType, building.level)}
+                        </Text>
+                      </View>
+                    ))}
+                  </View>
+                </View>
+
+                <View style={styles.recordSection}>
+                  <Text style={styles.recordSectionTitle}>Recent milestones</Text>
+                  {snapshot.completedItems.length === 0 ? (
+                    <Text style={styles.emptyState}>Complete a project to start the outpost history.</Text>
+                  ) : (
+                    snapshot.completedItems.slice(0, 5).map((item) => (
+                      <View key={item.id} style={styles.recordRow}>
+                        <Text style={styles.recordRowTitle}>{item.title}</Text>
+                        <Text style={styles.recordRowMeta}>{formatTimestamp(item.completedAt)}</Text>
+                      </View>
+                    ))
+                  )}
+                </View>
+              </View>
+            ) : null}
+          </View>
+        </View>
+      ) : null}
     </View>
   );
 }
@@ -1429,6 +1539,10 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: "#513625",
   },
+  dockCardPressed: {
+    transform: [{ scale: 0.985 }],
+    opacity: 0.96,
+  },
   dockEyebrow: {
     fontSize: 10,
     textTransform: "uppercase",
@@ -1473,6 +1587,107 @@ const styles = StyleSheet.create({
     fontWeight: "700",
     textAlign: "center",
     lineHeight: 13,
+  },
+  sheetOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    justifyContent: "flex-end",
+  },
+  sheetBackdrop: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: "rgba(8, 5, 3, 0.58)",
+  },
+  sheetCard: {
+    backgroundColor: "#1f140d",
+    borderTopLeftRadius: 28,
+    borderTopRightRadius: 28,
+    paddingHorizontal: 16,
+    paddingTop: 10,
+    paddingBottom: 24,
+    borderTopWidth: 1,
+    borderColor: "#4a3020",
+    maxHeight: "68%",
+  },
+  sheetGrabber: {
+    alignSelf: "center",
+    width: 42,
+    height: 4,
+    borderRadius: 999,
+    backgroundColor: "#6d5037",
+    marginBottom: 12,
+  },
+  sheetHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "flex-start",
+    gap: 12,
+    marginBottom: 14,
+  },
+  sheetHeaderCopy: {
+    flex: 1,
+  },
+  sheetEyebrow: {
+    fontSize: 10,
+    textTransform: "uppercase",
+    letterSpacing: 0.9,
+    color: "#b18d64",
+    marginBottom: 6,
+  },
+  sheetTitle: {
+    fontSize: 20,
+    fontWeight: "700",
+    color: "#f0e1c3",
+  },
+  sheetCloseButton: {
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 999,
+    backgroundColor: "#332116",
+    borderWidth: 1,
+    borderColor: "#5a402d",
+  },
+  sheetCloseLabel: {
+    fontSize: 12,
+    fontWeight: "700",
+    color: "#ead9b8",
+  },
+  sheetSection: {
+    gap: 14,
+  },
+  sheetLead: {
+    fontSize: 13,
+    lineHeight: 19,
+    color: "#c0a784",
+  },
+  sheetTerritoryGrid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 8,
+  },
+  sheetTerritoryTile: {
+    width: "31.8%",
+    minHeight: 82,
+    borderRadius: 16,
+    paddingHorizontal: 8,
+    paddingVertical: 10,
+    justifyContent: "center",
+    alignItems: "center",
+    borderWidth: 1,
+  },
+  sheetTerritoryLabel: {
+    fontSize: 11,
+    fontWeight: "700",
+    textAlign: "center",
+    lineHeight: 14,
+  },
+  sheetTerritoryMeta: {
+    fontSize: 10,
+    marginTop: 4,
+    textAlign: "center",
+  },
+  sheetTerritoryKey: {
+    fontSize: 10,
+    marginTop: 3,
+    textAlign: "center",
   },
   territoryTileOccupied: {
     backgroundColor: "#c4611b",
