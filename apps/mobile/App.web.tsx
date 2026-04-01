@@ -82,11 +82,11 @@ const styles = StyleSheet.create({
     backgroundColor: "#f4efe5",
   },
   content: {
-    padding: 20,
+    padding: 14,
   },
   contentInner: {
     width: "100%",
-    maxWidth: 1280,
+    maxWidth: 560,
     alignSelf: "center",
     gap: 16,
   },
@@ -114,6 +114,7 @@ const styles = StyleSheet.create({
     gap: 10,
     alignItems: "center",
     paddingHorizontal: 6,
+    justifyContent: "center",
   },
   runtimeBadge: {
     backgroundColor: "#efe3c7",
