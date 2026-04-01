@@ -201,23 +201,35 @@ export function SettlementHomeScreen({
                   const tileLabel = building
                     ? formatBuildingLabel(building.buildingType, building.level)
                     : formatTileState(tile.state);
+                  const tileSummary = getTileSummary(tile.state, tile.terrainType, building?.buildingType);
 
                   return (
                     <View key={tile.id} style={[styles.tileCard, tileStyle.card]}>
                       <View style={styles.tileHeader}>
-                        <Text style={[styles.tileKey, tileStyle.key]}>{tile.tileKey}</Text>
-                        <Text style={[styles.tileTerrain, tileStyle.terrain]}>
-                          {formatTerrain(tile.terrainType)}
-                        </Text>
+                        <View>
+                          <Text style={[styles.tileTerrain, tileStyle.terrain]}>
+                            {formatTerrain(tile.terrainType)}
+                          </Text>
+                          <Text style={[styles.tileKey, tileStyle.key]}>Tile {tile.tileKey}</Text>
+                        </View>
+                        <View style={[styles.tileStatusPill, tileStyle.badge]}>
+                          <Text style={[styles.tileStatusPillLabel, tileStyle.badgeLabel]}>
+                            {tileLabel}
+                          </Text>
+                        </View>
                       </View>
-                      <View style={[styles.tileBadge, tileStyle.badge]}>
-                        <Text style={[styles.tileBadgeLabel, tileStyle.badgeLabel]}>
-                          {tileLabel}
-                        </Text>
+
+                      <View style={[styles.sceneFrame, tileStyle.sceneFrame]}>
+                        <View style={[styles.sceneSky, tileStyle.sky]} />
+                        <View style={[styles.sceneBackHorizon, tileStyle.backHorizon]} />
+                        <View style={[styles.sceneGround, tileStyle.ground]}>
+                          <View style={[styles.scenePath, tileStyle.path]} />
+                          {renderTerrainDecoration(tile.terrainType, tile.state)}
+                          {renderBuildingPresence(building?.buildingType)}
+                        </View>
                       </View>
-                      <Text style={[styles.tileState, tileStyle.state]}>
-                        {building ? `Structure ${building.state}` : formatTileState(tile.state)}
-                      </Text>
+
+                      <Text style={[styles.tileState, tileStyle.state]}>{tileSummary}</Text>
                     </View>
                   );
                 })}
@@ -297,6 +309,123 @@ function ActionButton({ label, hint, disabled, onPress }: ActionButtonProps) {
       <Text style={styles.actionHint}>{hint}</Text>
     </Pressable>
   );
+}
+
+function renderTerrainDecoration(terrainType: string, tileState: string) {
+  if (tileState === "blocked") {
+    return (
+      <View style={styles.terrainDecorationRow}>
+        <View style={styles.rockLarge} />
+        <View style={styles.rockMedium} />
+        <View style={styles.rockSmall} />
+      </View>
+    );
+  }
+
+  if (terrainType === "forest-edge") {
+    return (
+      <View style={styles.terrainDecorationRow}>
+        <View style={styles.treeCluster}>
+          <View style={styles.treeCanopyTall} />
+          <View style={styles.treeCanopyWide} />
+        </View>
+        <View style={styles.treeCluster}>
+          <View style={styles.treeCanopyWide} />
+          <View style={styles.treeCanopyTall} />
+        </View>
+      </View>
+    );
+  }
+
+  if (terrainType === "hill") {
+    return (
+      <View style={styles.terrainDecorationRow}>
+        <View style={styles.hillRiseLarge} />
+        <View style={styles.hillRiseSmall} />
+      </View>
+    );
+  }
+
+  return (
+    <View style={styles.terrainDecorationRow}>
+      <View style={styles.grassBladeTall} />
+      <View style={styles.grassBladeShort} />
+      <View style={styles.grassBladeTall} />
+    </View>
+  );
+}
+
+function renderBuildingPresence(buildingType?: BuildingType) {
+  if (!buildingType) {
+    return null;
+  }
+
+  if (buildingType === "camp") {
+    return (
+      <View style={styles.structureBase}>
+        <View style={styles.campTentLeft} />
+        <View style={styles.campTentRight} />
+        <View style={styles.campFireGlow} />
+      </View>
+    );
+  }
+
+  if (buildingType === "workshop") {
+    return (
+      <View style={styles.structureBase}>
+        <View style={styles.workshopBody}>
+          <View style={styles.workshopRoof} />
+          <View style={styles.workshopDoor} />
+          <View style={styles.workshopWindow} />
+          <View style={styles.workshopChimney} />
+        </View>
+      </View>
+    );
+  }
+
+  if (buildingType === "hut") {
+    return (
+      <View style={styles.structureBase}>
+        <View style={styles.hutBody}>
+          <View style={styles.hutRoof} />
+        </View>
+      </View>
+    );
+  }
+
+  if (buildingType === "well") {
+    return (
+      <View style={styles.structureBase}>
+        <View style={styles.wellBody}>
+          <View style={styles.wellFrameLeft} />
+          <View style={styles.wellFrameRight} />
+          <View style={styles.wellRoof} />
+        </View>
+      </View>
+    );
+  }
+
+  if (buildingType === "storehouse") {
+    return (
+      <View style={styles.structureBase}>
+        <View style={styles.storehouseBody}>
+          <View style={styles.storehouseRoof} />
+        </View>
+      </View>
+    );
+  }
+
+  if (buildingType === "watchtower") {
+    return (
+      <View style={styles.structureBase}>
+        <View style={styles.watchtowerBody}>
+          <View style={styles.watchtowerTop} />
+        </View>
+      </View>
+    );
+  }
+
+  return null;
 }
 
 function compareTiles(left: SettlementSnapshot["tiles"][number], right: SettlementSnapshot["tiles"][number]): number {
@@ -383,6 +512,26 @@ function getNextGoal({
   };
 }
 
+function getTileSummary(
+  tileState: SettlementSnapshot["tiles"][number]["state"],
+  terrainType: string,
+  buildingType?: BuildingType,
+): string {
+  if (buildingType === "camp") {
+    return "The first campfire holds the settlement together.";
+  }
+
+  if (buildingType === "workshop") {
+    return "A real working structure now anchors the outpost.";
+  }
+
+  if (tileState === "blocked") {
+    return `This ${formatTerrain(terrainType).toLowerCase()} edge still needs clearing.`;
+  }
+
+  return `${formatTerrain(terrainType)} ground is ready for the next structure.`;
+}
+
 function getTileStyle(state: string, terrainType: string) {
   const isHill = terrainType === "hill";
 
@@ -394,6 +543,11 @@ function getTileStyle(state: string, terrainType: string) {
       badge: styles.tileOccupiedBadge,
       badgeLabel: styles.tileOccupiedBadgeLabel,
       state: styles.tileOccupiedState,
+      sky: styles.tileOccupiedSky,
+      backHorizon: styles.tileOccupiedBackHorizon,
+      ground: styles.tileOccupiedGround,
+      path: styles.tileOccupiedPath,
+      sceneFrame: styles.tileOccupiedSceneFrame,
     };
   }
 
@@ -405,6 +559,11 @@ function getTileStyle(state: string, terrainType: string) {
       badge: styles.tileBlockedBadge,
       badgeLabel: styles.tileBlockedBadgeLabel,
       state: styles.tileBlockedState,
+      sky: styles.tileBlockedSky,
+      backHorizon: styles.tileBlockedBackHorizon,
+      ground: styles.tileBlockedGround,
+      path: styles.tileBlockedPath,
+      sceneFrame: styles.tileBlockedSceneFrame,
     };
   }
 
@@ -415,6 +574,11 @@ function getTileStyle(state: string, terrainType: string) {
     badge: styles.tileClearedBadge,
     badgeLabel: styles.tileClearedBadgeLabel,
     state: styles.tileClearedState,
+    sky: styles.tileClearedSky,
+    backHorizon: styles.tileClearedBackHorizon,
+    ground: styles.tileClearedGround,
+    path: styles.tileClearedPath,
+    sceneFrame: styles.tileClearedSceneFrame,
   };
 }
 
@@ -743,7 +907,7 @@ const styles = StyleSheet.create({
   },
   tileCard: {
     width: "49%",
-    minHeight: 138,
+    minHeight: 232,
     borderRadius: 18,
     padding: 12,
     borderWidth: 1,
@@ -755,24 +919,299 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   tileKey: {
-    fontSize: 15,
+    fontSize: 12,
     fontWeight: "700",
+    marginTop: 4,
   },
   tileTerrain: {
-    fontSize: 12,
-    textAlign: "right",
-    maxWidth: "50%",
+    fontSize: 14,
+    fontWeight: "700",
   },
-  tileBadge: {
-    marginTop: 28,
+  tileStatusPill: {
     alignSelf: "flex-start",
     paddingHorizontal: 10,
     paddingVertical: 7,
     borderRadius: 999,
   },
-  tileBadgeLabel: {
+  tileStatusPillLabel: {
     fontSize: 12,
     fontWeight: "700",
+  },
+  sceneFrame: {
+    marginTop: 14,
+    height: 116,
+    borderRadius: 16,
+    overflow: "hidden",
+    borderWidth: 1,
+  },
+  sceneSky: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    height: 54,
+  },
+  sceneBackHorizon: {
+    position: "absolute",
+    left: 0,
+    right: 0,
+    bottom: 34,
+    height: 32,
+    borderTopLeftRadius: 18,
+    borderTopRightRadius: 18,
+  },
+  sceneGround: {
+    position: "absolute",
+    left: 0,
+    right: 0,
+    bottom: 0,
+    height: 52,
+    justifyContent: "flex-end",
+    paddingHorizontal: 12,
+    paddingBottom: 8,
+  },
+  scenePath: {
+    position: "absolute",
+    left: 28,
+    right: 32,
+    bottom: 10,
+    height: 10,
+    borderRadius: 999,
+  },
+  terrainDecorationRow: {
+    position: "absolute",
+    left: 12,
+    right: 12,
+    bottom: 8,
+    flexDirection: "row",
+    alignItems: "flex-end",
+    gap: 8,
+  },
+  grassBladeTall: {
+    width: 10,
+    height: 22,
+    borderTopLeftRadius: 10,
+    borderTopRightRadius: 10,
+    backgroundColor: "#6f8d51",
+  },
+  grassBladeShort: {
+    width: 10,
+    height: 16,
+    borderTopLeftRadius: 10,
+    borderTopRightRadius: 10,
+    backgroundColor: "#809a61",
+  },
+  rockLarge: {
+    width: 26,
+    height: 20,
+    borderRadius: 12,
+    backgroundColor: "#8d7f73",
+  },
+  rockMedium: {
+    width: 18,
+    height: 14,
+    borderRadius: 10,
+    backgroundColor: "#9e9081",
+  },
+  rockSmall: {
+    width: 12,
+    height: 10,
+    borderRadius: 8,
+    backgroundColor: "#b4a89b",
+  },
+  hillRiseLarge: {
+    width: 56,
+    height: 24,
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    backgroundColor: "#8fa36d",
+  },
+  hillRiseSmall: {
+    width: 42,
+    height: 16,
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    backgroundColor: "#a3b67f",
+  },
+  treeCluster: {
+    alignItems: "center",
+  },
+  treeCanopyTall: {
+    width: 22,
+    height: 30,
+    borderRadius: 16,
+    backgroundColor: "#597243",
+    marginBottom: -6,
+  },
+  treeCanopyWide: {
+    width: 30,
+    height: 22,
+    borderRadius: 16,
+    backgroundColor: "#6a8451",
+  },
+  structureBase: {
+    position: "absolute",
+    right: 18,
+    bottom: 8,
+    alignItems: "center",
+    justifyContent: "flex-end",
+  },
+  campTentLeft: {
+    width: 0,
+    height: 0,
+    borderLeftWidth: 12,
+    borderRightWidth: 12,
+    borderBottomWidth: 22,
+    borderLeftColor: "transparent",
+    borderRightColor: "transparent",
+    borderBottomColor: "#8b5f37",
+    position: "absolute",
+    bottom: 10,
+    left: -14,
+  },
+  campTentRight: {
+    width: 0,
+    height: 0,
+    borderLeftWidth: 10,
+    borderRightWidth: 10,
+    borderBottomWidth: 18,
+    borderLeftColor: "transparent",
+    borderRightColor: "transparent",
+    borderBottomColor: "#a17145",
+    position: "absolute",
+    bottom: 10,
+    left: 6,
+  },
+  campFireGlow: {
+    width: 10,
+    height: 10,
+    borderRadius: 999,
+    backgroundColor: "#f2b85c",
+    position: "absolute",
+    bottom: 8,
+    left: 0,
+  },
+  workshopBody: {
+    width: 48,
+    height: 30,
+    backgroundColor: "#7b5834",
+    borderRadius: 6,
+    justifyContent: "flex-end",
+    alignItems: "center",
+  },
+  workshopRoof: {
+    position: "absolute",
+    top: -10,
+    width: 56,
+    height: 14,
+    backgroundColor: "#a97845",
+    borderTopLeftRadius: 8,
+    borderTopRightRadius: 8,
+  },
+  workshopDoor: {
+    width: 12,
+    height: 16,
+    borderTopLeftRadius: 4,
+    borderTopRightRadius: 4,
+    backgroundColor: "#58391f",
+  },
+  workshopWindow: {
+    position: "absolute",
+    left: 8,
+    bottom: 10,
+    width: 8,
+    height: 8,
+    borderRadius: 2,
+    backgroundColor: "#e7c97d",
+  },
+  workshopChimney: {
+    position: "absolute",
+    top: -18,
+    right: 6,
+    width: 8,
+    height: 16,
+    borderRadius: 2,
+    backgroundColor: "#654526",
+  },
+  hutBody: {
+    width: 42,
+    height: 26,
+    backgroundColor: "#8a6741",
+    borderRadius: 6,
+  },
+  hutRoof: {
+    position: "absolute",
+    top: -9,
+    left: -3,
+    width: 48,
+    height: 12,
+    backgroundColor: "#a77b4d",
+    borderTopLeftRadius: 8,
+    borderTopRightRadius: 8,
+  },
+  wellBody: {
+    width: 28,
+    height: 18,
+    backgroundColor: "#8e7758",
+    borderRadius: 999,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  wellFrameLeft: {
+    position: "absolute",
+    left: 4,
+    top: -14,
+    width: 4,
+    height: 18,
+    backgroundColor: "#6e5638",
+    borderRadius: 2,
+  },
+  wellFrameRight: {
+    position: "absolute",
+    right: 4,
+    top: -14,
+    width: 4,
+    height: 18,
+    backgroundColor: "#6e5638",
+    borderRadius: 2,
+  },
+  wellRoof: {
+    position: "absolute",
+    top: -18,
+    width: 30,
+    height: 8,
+    backgroundColor: "#9c7346",
+    borderRadius: 6,
+  },
+  storehouseBody: {
+    width: 50,
+    height: 28,
+    backgroundColor: "#7d5a34",
+    borderRadius: 6,
+  },
+  storehouseRoof: {
+    position: "absolute",
+    top: -10,
+    left: -3,
+    width: 56,
+    height: 14,
+    backgroundColor: "#a97845",
+    borderTopLeftRadius: 8,
+    borderTopRightRadius: 8,
+  },
+  watchtowerBody: {
+    width: 10,
+    height: 40,
+    backgroundColor: "#6d5031",
+    alignItems: "center",
+    justifyContent: "flex-start",
+  },
+  watchtowerTop: {
+    marginTop: -4,
+    width: 28,
+    height: 10,
+    borderRadius: 6,
+    backgroundColor: "#9f7648",
   },
   tileOccupied: {
     backgroundColor: "#d7c497",
@@ -789,6 +1228,21 @@ const styles = StyleSheet.create({
   },
   tileOccupiedBadgeLabel: {
     color: "#5f431b",
+  },
+  tileOccupiedSky: {
+    backgroundColor: "#f1d594",
+  },
+  tileOccupiedBackHorizon: {
+    backgroundColor: "#c2b177",
+  },
+  tileOccupiedGround: {
+    backgroundColor: "#b99658",
+  },
+  tileOccupiedPath: {
+    backgroundColor: "#d6be87",
+  },
+  tileOccupiedSceneFrame: {
+    borderColor: "#b4945e",
   },
   tileOccupiedState: {
     color: "#5d4729",
@@ -808,6 +1262,21 @@ const styles = StyleSheet.create({
   },
   tileClearedBadgeLabel: {
     color: "#465832",
+  },
+  tileClearedSky: {
+    backgroundColor: "#dce7c3",
+  },
+  tileClearedBackHorizon: {
+    backgroundColor: "#b7ca98",
+  },
+  tileClearedGround: {
+    backgroundColor: "#9eb57b",
+  },
+  tileClearedPath: {
+    backgroundColor: "#cfdfb9",
+  },
+  tileClearedSceneFrame: {
+    borderColor: "#b7c399",
   },
   tileClearedState: {
     color: "#526245",
@@ -832,12 +1301,28 @@ const styles = StyleSheet.create({
   tileBlockedBadgeLabel: {
     color: "#5d4b39",
   },
+  tileBlockedSky: {
+    backgroundColor: "#ddd4cb",
+  },
+  tileBlockedBackHorizon: {
+    backgroundColor: "#bfb3a5",
+  },
+  tileBlockedGround: {
+    backgroundColor: "#9f8e7f",
+  },
+  tileBlockedPath: {
+    backgroundColor: "#d0c4b7",
+  },
+  tileBlockedSceneFrame: {
+    borderColor: "#aa9b87",
+  },
   tileBlockedState: {
     color: "#6d5f51",
   },
   tileState: {
-    fontSize: 14,
-    marginTop: 22,
+    fontSize: 13,
+    lineHeight: 18,
+    marginTop: 12,
   },
   ritualPanel: {
     marginTop: 14,
